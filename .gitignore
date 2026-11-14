@@ -1,0 +1,25 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Secrets - never commit API keys
+.env
+
+# Generated (rebuild with: python scripts/build_db.py)
+data/quran.db
+data/source_diff.csv
+
+# Node
+node_modules/
+frontend/dist/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Evaluation raw outputs can be big; keep the question set, not every run
+eval/results/

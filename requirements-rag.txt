@@ -1,0 +1,8 @@
+# Install later, when you start the AI assistant (pip install -r requirements-rag.txt).
+# sentence-transformers pulls in PyTorch, which is a large download - don't install it on day one.
+-r requirements.txt
+numpy
+sentence-transformers
+anthropic
+# openai
+pandas

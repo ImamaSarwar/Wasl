@@ -1,0 +1,4 @@
+# Keep line endings identical on Windows and Mac so the data files and scripts behave the same.
+* text=auto eol=lf
+*.txt text eol=lf
+*.csv text eol=lf
