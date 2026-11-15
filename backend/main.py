@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from . import queries
+from rag.pipeline import answer as rag_answer
 
 app = FastAPI(title="Wasl - Quran Root Explorer (Surah Al-Mulk)")
 
@@ -72,11 +73,5 @@ class AskRequest(BaseModel):
 
 @app.post("/api/ask")
 def ask(req: AskRequest):
-    """Placeholder. The RAG pipeline (router -> retrieve -> generate -> verify) plugs in here later."""
-    return {
-        "answer": "The assistant is not built yet. (Phase 4)",
-        "citations": [],
-        "refused": True,
-        "verification_errors": [],
-        "echo": req.question,
-    }
+    """RAG assistant: question -> resolve roots -> retrieve evidence -> answer (+ verify, later)."""
+    return rag_answer(req.question)

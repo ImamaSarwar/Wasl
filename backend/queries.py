@@ -84,3 +84,11 @@ def cross(root=None, min_ayahs=2):
     for r in rows:
         r["ayahs"] = sorted(int(x) for x in r["ayahs"].split(","))
     return rows
+
+
+def root_words(root):
+    """Every occurrence of a root, with its ayah's text and translation (used by the RAG evidence builder)."""
+    return _rows(
+        "SELECT w.word_id, w.ayah, w.pos, w.arabic AS word_arabic, w.lemma, w.pos_tag, w.grammar, "
+        "a.arabic AS ayah_arabic, a.translation FROM words w JOIN ayahs a USING(ayah) "
+        "WHERE w.root=? ORDER BY w.ayah, w.pos", (root,))

@@ -1,0 +1,909 @@
+{
+ "برك": {
+  "buckwalter": "brk",
+  "latin": "brk",
+  "lemmas": {
+   "تَبارَكَ": "tabaaraka"
+  }
+ },
+ "يدي": {
+  "buckwalter": "ydy",
+  "latin": "ydy",
+  "lemmas": {
+   "يَد": "yad"
+  }
+ },
+ "ملك": {
+  "buckwalter": "mlk",
+  "latin": "mlk",
+  "lemmas": {
+   "مُلْك": "mulk"
+  }
+ },
+ "كلل": {
+  "buckwalter": "kll",
+  "latin": "kll",
+  "lemmas": {
+   "كُلّ": "kul",
+   "كُلَّما": "kulamaa"
+  }
+ },
+ "شيأ": {
+  "buckwalter": "$yA",
+  "latin": "shyʾ",
+  "lemmas": {
+   "شَىْء": "shaa"
+  }
+ },
+ "قدر": {
+  "buckwalter": "qdr",
+  "latin": "qdr",
+  "lemmas": {
+   "قَدِير": "qadiyr"
+  }
+ },
+ "خلق": {
+  "buckwalter": "xlq",
+  "latin": "khlq",
+  "lemmas": {
+   "خَلَقَ": "khalaqa",
+   "خَلْق": "khalq"
+  }
+ },
+ "موت": {
+  "buckwalter": "mwt",
+  "latin": "mwt",
+  "lemmas": {
+   "مَوْت": "mawt"
+  }
+ },
+ "حيي": {
+  "buckwalter": "Hyy",
+  "latin": "hyy",
+  "lemmas": {
+   "حَياة": "hayawah"
+  }
+ },
+ "بلو": {
+  "buckwalter": "blw",
+  "latin": "blw",
+  "lemmas": {
+   "بَلَوْ": "balaw"
+  }
+ },
+ "حسن": {
+  "buckwalter": "Hsn",
+  "latin": "hsn",
+  "lemmas": {
+   "أَحْسَن": "aahsan"
+  }
+ },
+ "عمل": {
+  "buckwalter": "Eml",
+  "latin": "ʿml",
+  "lemmas": {
+   "عَمَل": "ʿamal"
+  }
+ },
+ "عزز": {
+  "buckwalter": "Ezz",
+  "latin": "ʿzz",
+  "lemmas": {
+   "عَزِيز": "ʿaziyz"
+  }
+ },
+ "غفر": {
+  "buckwalter": "gfr",
+  "latin": "ghfr",
+  "lemmas": {
+   "غَفُور": "ghafuwr",
+   "مَغْفِرَة": "maghfirah"
+  }
+ },
+ "سبع": {
+  "buckwalter": "sbE",
+  "latin": "sbʿ",
+  "lemmas": {
+   "سَبْع": "sabʿ"
+  }
+ },
+ "سمو": {
+  "buckwalter": "smw",
+  "latin": "smw",
+  "lemmas": {
+   "سَماء": "samaa"
+  }
+ },
+ "طبق": {
+  "buckwalter": "Tbq",
+  "latin": "tbq",
+  "lemmas": {
+   "طَبَق": "tabaq"
+  }
+ },
+ "رأي": {
+  "buckwalter": "rAy",
+  "latin": "rʾy",
+  "lemmas": {
+   "رَأَى": "raaa"
+  }
+ },
+ "رحم": {
+  "buckwalter": "rHm",
+  "latin": "rhm",
+  "lemmas": {
+   "رَحْمٰن": "rahmaan",
+   "رَحِمَ": "rahima"
+  }
+ },
+ "فوت": {
+  "buckwalter": "fwt",
+  "latin": "fwt",
+  "lemmas": {
+   "تَفاوُت": "tafaawut"
+  }
+ },
+ "رجع": {
+  "buckwalter": "rjE",
+  "latin": "rjʿ",
+  "lemmas": {
+   "رَجَعَ": "rajaʿa"
+  }
+ },
+ "بصر": {
+  "buckwalter": "bSr",
+  "latin": "bsr",
+  "lemmas": {
+   "بَصَر": "basar",
+   "بَصِير": "basiyr"
+  }
+ },
+ "فطر": {
+  "buckwalter": "fTr",
+  "latin": "ftr",
+  "lemmas": {
+   "فُطُور": "futuwr"
+  }
+ },
+ "كرر": {
+  "buckwalter": "krr",
+  "latin": "krr",
+  "lemmas": {
+   "كَرَّة": "karah"
+  }
+ },
+ "قلب": {
+  "buckwalter": "qlb",
+  "latin": "qlb",
+  "lemmas": {
+   "انقَلَبَ": "anqalaba"
+  }
+ },
+ "خسأ": {
+  "buckwalter": "xsA",
+  "latin": "khsʾ",
+  "lemmas": {
+   "خاسِئ": "khaasii"
+  }
+ },
+ "حسر": {
+  "buckwalter": "Hsr",
+  "latin": "hsr",
+  "lemmas": {
+   "حَسِير": "hasiyr"
+  }
+ },
+ "زين": {
+  "buckwalter": "zyn",
+  "latin": "zyn",
+  "lemmas": {
+   "زَيَّنَ": "zayana"
+  }
+ },
+ "دنو": {
+  "buckwalter": "dnw",
+  "latin": "dnw",
+  "lemmas": {
+   "دُنْيا": "dunyaa"
+  }
+ },
+ "صبح": {
+  "buckwalter": "SbH",
+  "latin": "sbh",
+  "lemmas": {
+   "مِصْباح": "misbaah",
+   "أَصْبَحَ": "aasbaha"
+  }
+ },
+ "جعل": {
+  "buckwalter": "jEl",
+  "latin": "jʿl",
+  "lemmas": {
+   "جَعَلَ": "jaʿala"
+  }
+ },
+ "رجم": {
+  "buckwalter": "rjm",
+  "latin": "rjm",
+  "lemmas": {
+   "رُجُوم": "rujuwm"
+  }
+ },
+ "شطن": {
+  "buckwalter": "$Tn",
+  "latin": "shtn",
+  "lemmas": {
+   "شَيْطان": "shaytaan"
+  }
+ },
+ "عتد": {
+  "buckwalter": "Etd",
+  "latin": "ʿtd",
+  "lemmas": {
+   "أَعْتَدَتْ": "aaʿtadat"
+  }
+ },
+ "عذب": {
+  "buckwalter": "E*b",
+  "latin": "ʿdhb",
+  "lemmas": {
+   "عَذاب": "ʿadhaab"
+  }
+ },
+ "سعر": {
+  "buckwalter": "sEr",
+  "latin": "sʿr",
+  "lemmas": {
+   "سَعِير": "saʿiyr"
+  }
+ },
+ "كفر": {
+  "buckwalter": "kfr",
+  "latin": "kfr",
+  "lemmas": {
+   "كَفَرَ": "kafara",
+   "كافِر": "kaafiruwn"
+  }
+ },
+ "ربب": {
+  "buckwalter": "rbb",
+  "latin": "rbb",
+  "lemmas": {
+   "رَبّ": "rab"
+  }
+ },
+ "بأس": {
+  "buckwalter": "bAs",
+  "latin": "bʾs",
+  "lemmas": {
+   "بِئْسَ": "biisa"
+  }
+ },
+ "صير": {
+  "buckwalter": "Syr",
+  "latin": "syr",
+  "lemmas": {
+   "مَصِير": "masiyr"
+  }
+ },
+ "لقي": {
+  "buckwalter": "lqy",
+  "latin": "lqy",
+  "lemmas": {
+   "أَلْقَى": "aalqaaa"
+  }
+ },
+ "سمع": {
+  "buckwalter": "smE",
+  "latin": "smʿ",
+  "lemmas": {
+   "سَمِعَ": "samiʿa",
+   "سَمْع": "samʿ"
+  }
+ },
+ "شهق": {
+  "buckwalter": "$hq",
+  "latin": "shhq",
+  "lemmas": {
+   "شَهِيق": "shahiyq"
+  }
+ },
+ "فور": {
+  "buckwalter": "fwr",
+  "latin": "fwr",
+  "lemmas": {
+   "فارَ": "faara"
+  }
+ },
+ "كود": {
+  "buckwalter": "kwd",
+  "latin": "kwd",
+  "lemmas": {
+   "كادَ": "kaada"
+  }
+ },
+ "ميز": {
+  "buckwalter": "myz",
+  "latin": "myz",
+  "lemmas": {
+   "تَمَيَّزُ": "tamayazu"
+  }
+ },
+ "غيظ": {
+  "buckwalter": "gyZ",
+  "latin": "ghyz",
+  "lemmas": {
+   "غَيْظ": "ghayz"
+  }
+ },
+ "فوج": {
+  "buckwalter": "fwj",
+  "latin": "fwj",
+  "lemmas": {
+   "فَوْج": "fawj"
+  }
+ },
+ "سأل": {
+  "buckwalter": "sAl",
+  "latin": "sʾl",
+  "lemmas": {
+   "سَأَلَ": "saaala"
+  }
+ },
+ "خزن": {
+  "buckwalter": "xzn",
+  "latin": "khzn",
+  "lemmas": {
+   "خَزَنَت": "khazanat"
+  }
+ },
+ "أتي": {
+  "buckwalter": "Aty",
+  "latin": "ʾty",
+  "lemmas": {
+   "أَتَى": "aataa"
+  }
+ },
+ "نذر": {
+  "buckwalter": "n*r",
+  "latin": "ndhr",
+  "lemmas": {
+   "نَذِير": "nadhiyr"
+  }
+ },
+ "قول": {
+  "buckwalter": "qwl",
+  "latin": "qwl",
+  "lemmas": {
+   "قالَ": "qaala",
+   "قَوْل": "qawl"
+  }
+ },
+ "جيأ": {
+  "buckwalter": "jyA",
+  "latin": "jyʾ",
+  "lemmas": {
+   "جاءَ": "jaaa"
+  }
+ },
+ "كذب": {
+  "buckwalter": "k*b",
+  "latin": "kdhb",
+  "lemmas": {
+   "كَذَّبَ": "kadhaba"
+  }
+ },
+ "نزل": {
+  "buckwalter": "nzl",
+  "latin": "nzl",
+  "lemmas": {
+   "نَزَّلَ": "nazala"
+  }
+ },
+ "أله": {
+  "buckwalter": "Alh",
+  "latin": "ʾlh",
+  "lemmas": {
+   "اللَّه": "allah"
+  }
+ },
+ "ضلل": {
+  "buckwalter": "Dll",
+  "latin": "dll",
+  "lemmas": {
+   "ضَلال": "dalaal"
+  }
+ },
+ "كبر": {
+  "buckwalter": "kbr",
+  "latin": "kbr",
+  "lemmas": {
+   "كَبِير": "kabiyr"
+  }
+ },
+ "كون": {
+  "buckwalter": "kwn",
+  "latin": "kwn",
+  "lemmas": {
+   "كانَ": "kaana"
+  }
+ },
+ "عقل": {
+  "buckwalter": "Eql",
+  "latin": "ʿql",
+  "lemmas": {
+   "عَقَلُ": "ʿaqalu"
+  }
+ },
+ "صحب": {
+  "buckwalter": "SHb",
+  "latin": "shb",
+  "lemmas": {
+   "أَصْحاب": "aashaab"
+  }
+ },
+ "عرف": {
+  "buckwalter": "Erf",
+  "latin": "ʿrf",
+  "lemmas": {
+   "اعْتَرَفُ": "aʿtarafu"
+  }
+ },
+ "ذنب": {
+  "buckwalter": "*nb",
+  "latin": "dhnb",
+  "lemmas": {
+   "ذَنب": "dhanb"
+  }
+ },
+ "سحق": {
+  "buckwalter": "sHq",
+  "latin": "shq",
+  "lemmas": {
+   "سُحْق": "suhq"
+  }
+ },
+ "خشي": {
+  "buckwalter": "x$y",
+  "latin": "khshy",
+  "lemmas": {
+   "خَشِيَ": "khashiaa"
+  }
+ },
+ "غيب": {
+  "buckwalter": "gyb",
+  "latin": "ghyb",
+  "lemmas": {
+   "غَيْب": "ghayb"
+  }
+ },
+ "أجر": {
+  "buckwalter": "Ajr",
+  "latin": "ʾjr",
+  "lemmas": {
+   "أَجْر": "aajr"
+  }
+ },
+ "سرر": {
+  "buckwalter": "srr",
+  "latin": "srr",
+  "lemmas": {
+   "أَسَرَّ": "aasara"
+  }
+ },
+ "جهر": {
+  "buckwalter": "jhr",
+  "latin": "jhr",
+  "lemmas": {
+   "جَهَرَ": "jahara"
+  }
+ },
+ "علم": {
+  "buckwalter": "Elm",
+  "latin": "ʿlm",
+  "lemmas": {
+   "عَلِيم": "ʿaliym",
+   "عَلِمَ": "ʿalima",
+   "عِلْم": "ʿilm"
+  }
+ },
+ "صدر": {
+  "buckwalter": "Sdr",
+  "latin": "sdr",
+  "lemmas": {
+   "صَدْر": "sadr"
+  }
+ },
+ "لطف": {
+  "buckwalter": "lTf",
+  "latin": "ltf",
+  "lemmas": {
+   "لَطِيف": "latiyf"
+  }
+ },
+ "خبر": {
+  "buckwalter": "xbr",
+  "latin": "khbr",
+  "lemmas": {
+   "خَبِير": "khabiyr"
+  }
+ },
+ "أرض": {
+  "buckwalter": "ArD",
+  "latin": "ʾrd",
+  "lemmas": {
+   "أَرْض": "aard"
+  }
+ },
+ "ذلل": {
+  "buckwalter": "*ll",
+  "latin": "dhll",
+  "lemmas": {
+   "ذَلُول": "dhaluwl"
+  }
+ },
+ "مشي": {
+  "buckwalter": "m$y",
+  "latin": "mshy",
+  "lemmas": {
+   "مَشَ": "masha"
+  }
+ },
+ "نكب": {
+  "buckwalter": "nkb",
+  "latin": "nkb",
+  "lemmas": {
+   "مَناكِب": "manaakib"
+  }
+ },
+ "أكل": {
+  "buckwalter": "Akl",
+  "latin": "ʾkl",
+  "lemmas": {
+   "أَكَلَ": "aakala"
+  }
+ },
+ "رزق": {
+  "buckwalter": "rzq",
+  "latin": "rzq",
+  "lemmas": {
+   "رِزْق": "rizq",
+   "رَزَقَ": "razaqa"
+  }
+ },
+ "نشر": {
+  "buckwalter": "n$r",
+  "latin": "nshr",
+  "lemmas": {
+   "نُشُور": "nushuwr"
+  }
+ },
+ "أمن": {
+  "buckwalter": "Amn",
+  "latin": "ʾmn",
+  "lemmas": {
+   "أَمِنَ": "aamina",
+   "آمَنَ": "aamana"
+  }
+ },
+ "خسف": {
+  "buckwalter": "xsf",
+  "latin": "khsf",
+  "lemmas": {
+   "خَسَفَ": "khasafa"
+  }
+ },
+ "مور": {
+  "buckwalter": "mwr",
+  "latin": "mwr",
+  "lemmas": {
+   "تَمُورُ": "tamuwru"
+  }
+ },
+ "رسل": {
+  "buckwalter": "rsl",
+  "latin": "rsl",
+  "lemmas": {
+   "أَرْسَلَ": "aarsala"
+  }
+ },
+ "حصب": {
+  "buckwalter": "HSb",
+  "latin": "hsb",
+  "lemmas": {
+   "حاصِب": "haasib"
+  }
+ },
+ "كيف": {
+  "buckwalter": "kyf",
+  "latin": "kyf",
+  "lemmas": {
+   "كَيْف": "kayf"
+  }
+ },
+ "قبل": {
+  "buckwalter": "qbl",
+  "latin": "qbl",
+  "lemmas": {
+   "قَبْل": "qabl"
+  }
+ },
+ "نكر": {
+  "buckwalter": "nkr",
+  "latin": "nkr",
+  "lemmas": {
+   "نَكِير": "nakiyr"
+  }
+ },
+ "طير": {
+  "buckwalter": "Tyr",
+  "latin": "tyr",
+  "lemmas": {
+   "طَيْر": "tayr"
+  }
+ },
+ "فوق": {
+  "buckwalter": "fwq",
+  "latin": "fwq",
+  "lemmas": {
+   "فَوْق": "fawq"
+  }
+ },
+ "صفف": {
+  "buckwalter": "Sff",
+  "latin": "sff",
+  "lemmas": {
+   "صافَّة": "saafaat"
+  }
+ },
+ "قبض": {
+  "buckwalter": "qbD",
+  "latin": "qbd",
+  "lemmas": {
+   "قَبَضْ": "qabad"
+  }
+ },
+ "مسك": {
+  "buckwalter": "msk",
+  "latin": "msk",
+  "lemmas": {
+   "أَمْسَكَ": "aamsaka"
+  }
+ },
+ "جند": {
+  "buckwalter": "jnd",
+  "latin": "jnd",
+  "lemmas": {
+   "جُند": "jund"
+  }
+ },
+ "نصر": {
+  "buckwalter": "nSr",
+  "latin": "nsr",
+  "lemmas": {
+   "نَصَرَ": "nasara"
+  }
+ },
+ "دون": {
+  "buckwalter": "dwn",
+  "latin": "dwn",
+  "lemmas": {
+   "دُون": "duwn"
+  }
+ },
+ "غرر": {
+  "buckwalter": "grr",
+  "latin": "ghrr",
+  "lemmas": {
+   "غُرُور": "ghuruwr"
+  }
+ },
+ "لجج": {
+  "buckwalter": "ljj",
+  "latin": "ljj",
+  "lemmas": {
+   "لَجُّ": "laju"
+  }
+ },
+ "عتو": {
+  "buckwalter": "Etw",
+  "latin": "ʿtw",
+  "lemmas": {
+   "عُتُوّ": "ʿutuw"
+  }
+ },
+ "نفر": {
+  "buckwalter": "nfr",
+  "latin": "nfr",
+  "lemmas": {
+   "نُفُور": "nufuwr"
+  }
+ },
+ "كبب": {
+  "buckwalter": "kbb",
+  "latin": "kbb",
+  "lemmas": {
+   "مُكِبّ": "mukib"
+  }
+ },
+ "وجه": {
+  "buckwalter": "wjh",
+  "latin": "wjh",
+  "lemmas": {
+   "وَجْه": "wajh"
+  }
+ },
+ "هدي": {
+  "buckwalter": "hdy",
+  "latin": "hdy",
+  "lemmas": {
+   "أَهْدَى": "aahdaaa"
+  }
+ },
+ "سوي": {
+  "buckwalter": "swy",
+  "latin": "swy",
+  "lemmas": {
+   "سَوِيّ": "sawiy"
+  }
+ },
+ "صرط": {
+  "buckwalter": "SrT",
+  "latin": "srt",
+  "lemmas": {
+   "صِراط": "siraat"
+  }
+ },
+ "قوم": {
+  "buckwalter": "qwm",
+  "latin": "qwm",
+  "lemmas": {
+   "مُسْتَقِيم": "mustaqiym"
+  }
+ },
+ "نشأ": {
+  "buckwalter": "n$A",
+  "latin": "nshʾ",
+  "lemmas": {
+   "أَنشَأَ": "aanshaaa"
+  }
+ },
+ "فأد": {
+  "buckwalter": "fAd",
+  "latin": "fʾd",
+  "lemmas": {
+   "فُؤاد": "fuuaad"
+  }
+ },
+ "قلل": {
+  "buckwalter": "qll",
+  "latin": "qll",
+  "lemmas": {
+   "قَلِيل": "qaliyl"
+  }
+ },
+ "شكر": {
+  "buckwalter": "$kr",
+  "latin": "shkr",
+  "lemmas": {
+   "شَكَرَ": "shakara"
+  }
+ },
+ "ذرأ": {
+  "buckwalter": "*rA",
+  "latin": "dhrʾ",
+  "lemmas": {
+   "ذَرَأَ": "dharaaa"
+  }
+ },
+ "حشر": {
+  "buckwalter": "H$r",
+  "latin": "hshr",
+  "lemmas": {
+   "حَشَرَ": "hashara"
+  }
+ },
+ "وعد": {
+  "buckwalter": "wEd",
+  "latin": "wʿd",
+  "lemmas": {
+   "وَعْد": "waʿd"
+  }
+ },
+ "صدق": {
+  "buckwalter": "Sdq",
+  "latin": "sdq",
+  "lemmas": {
+   "صادِق": "saadiq"
+  }
+ },
+ "عند": {
+  "buckwalter": "End",
+  "latin": "ʿnd",
+  "lemmas": {
+   "عِند": "ʿind"
+  }
+ },
+ "بين": {
+  "buckwalter": "byn",
+  "latin": "byn",
+  "lemmas": {
+   "مُبِين": "mubiyn"
+  }
+ },
+ "زلف": {
+  "buckwalter": "zlf",
+  "latin": "zlf",
+  "lemmas": {
+   "زُلْفَة": "zulfah"
+  }
+ },
+ "سوأ": {
+  "buckwalter": "swA",
+  "latin": "swʾ",
+  "lemmas": {
+   "ساءَ": "saaa"
+  }
+ },
+ "دعو": {
+  "buckwalter": "dEw",
+  "latin": "dʿw",
+  "lemmas": {
+   "يَدَّعُ": "yadaʿu"
+  }
+ },
+ "هلك": {
+  "buckwalter": "hlk",
+  "latin": "hlk",
+  "lemmas": {
+   "أَهْلَكَ": "aahlaka"
+  }
+ },
+ "جور": {
+  "buckwalter": "jwr",
+  "latin": "jwr",
+  "lemmas": {
+   "يُجِيرُ": "yujiyru"
+  }
+ },
+ "ألم": {
+  "buckwalter": "Alm",
+  "latin": "ʾlm",
+  "lemmas": {
+   "أَلِيم": "aaliym"
+  }
+ },
+ "وكل": {
+  "buckwalter": "wkl",
+  "latin": "wkl",
+  "lemmas": {
+   "تَوَكَّلْ": "tawakal"
+  }
+ },
+ "موه": {
+  "buckwalter": "mwh",
+  "latin": "mwh",
+  "lemmas": {
+   "ماء": "maa"
+  }
+ },
+ "غور": {
+  "buckwalter": "gwr",
+  "latin": "ghwr",
+  "lemmas": {
+   "غَوْر": "ghawr"
+  }
+ },
+ "عين": {
+  "buckwalter": "Eyn",
+  "latin": "ʿyn",
+  "lemmas": {
+   "مَعِين": "maʿiyn"
+  }
+ },
+ "أيي": {
+  "buckwalter": null,
+  "latin": "",
+  "lemmas": {}
+ }
+}
