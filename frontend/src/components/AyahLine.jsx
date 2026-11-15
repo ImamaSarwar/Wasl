@@ -1,8 +1,12 @@
-// One ayah: Arabic words (hoverable/clickable) + English translation underneath.
+// One ayah: Arabic words (hoverable/clickable), then transliteration, then English translation.
 // Used by both the Reader and the verse drill-down list.
+//   selectedRoot : words with this root get a soft highlight
+//   clickedId    : the one word the user actually clicked gets a stronger marker
+//   highlightIds : (drill-down) words that matched the selected form, shown in yellow
 export default function AyahLine({
   ayah,
   selectedRoot,
+  clickedId,
   highlightIds,
   onHover,
   onWordClick,
@@ -18,6 +22,7 @@ export default function AyahLine({
               "w",
               w.root ? "has-root" : "no-root",
               selectedRoot && w.root === selectedRoot ? "same-root" : "",
+              clickedId === w.word_id ? "clicked" : "",
               highlightIds && highlightIds.has(w.word_id) ? "hit" : "",
             ].join(" ");
             return (
@@ -26,7 +31,7 @@ export default function AyahLine({
                   className={cls}
                   onMouseEnter={(e) => onHover(w, ayah, e.currentTarget.getBoundingClientRect())}
                   onMouseLeave={() => onHover(null)}
-                  onClick={() => w.root && onWordClick(w.root)}
+                  onClick={() => w.root && onWordClick(w.root, w.word_id)}
                 >
                   {w.arabic}
                 </span>
@@ -35,6 +40,9 @@ export default function AyahLine({
             );
           })}
         </p>
+        {showTranslation && ayah.transliteration && (
+          <p className="translit">{ayah.transliteration}</p>
+        )}
         {showTranslation && <p className="translation">{ayah.translation}</p>}
       </div>
     </div>

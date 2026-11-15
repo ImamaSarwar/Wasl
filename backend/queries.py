@@ -6,6 +6,8 @@ import os
 import sqlite3
 from pathlib import Path
 
+from .grammar import describe
+
 DB_PATH = Path(os.environ.get("WASL_DB", Path(__file__).resolve().parent.parent / "data" / "quran.db"))
 
 
@@ -18,11 +20,28 @@ def _rows(sql, args=()):
         db.close()
 
 
+def _decorate(w):
+    """Add the plain-English description and (for verbs) the past/present forms to a word row.
+    Raw columns (pos_tag, grammar, ...) are left untouched; the RAG code relies on them."""
+    w["plain"] = describe(w["pos_tag"], w["grammar"])
+    if w["pos_tag"] == "V" and w["root"]:
+        w["tenses"] = {
+            "past": {"form": w["past_form"], "ref": w["past_ref"]},
+            "present": {"form": w["present_form"], "ref": w["present_ref"]},
+        }
+    else:
+        w["tenses"] = None
+    for k in ("past_form", "past_ref", "present_form", "present_ref"):
+        w.pop(k, None)
+    return w
+
+
 def get_ayahs():
     """Whole surah: each ayah with its words nested (used by the reader and hover)."""
-    ayahs = _rows("SELECT ayah, arabic, translation FROM ayahs ORDER BY ayah")
-    words = _rows("SELECT word_id, ayah, pos, arabic, trail, root, lemma, pos_tag, grammar, gloss "
-                  "FROM words ORDER BY ayah, pos")
+    ayahs = _rows("SELECT ayah, arabic, translation, transliteration FROM ayahs ORDER BY ayah")
+    words = [_decorate(w) for w in _rows(
+        "SELECT word_id, ayah, pos, arabic, trail, root, lemma, pos_tag, grammar, gloss, "
+        "past_form, past_ref, present_form, present_ref FROM words ORDER BY ayah, pos")]
     by_ayah = {}
     for w in words:
         by_ayah.setdefault(w["ayah"], []).append(w)
@@ -33,7 +52,7 @@ def get_ayahs():
 
 def get_word(word_id):
     rows = _rows("SELECT w.*, a.translation FROM words w JOIN ayahs a USING(ayah) WHERE word_id=?", (word_id,))
-    return rows[0] if rows else None
+    return _decorate(rows[0]) if rows else None
 
 
 def list_roots():

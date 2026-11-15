@@ -7,6 +7,7 @@
   --accent: #0f766e;
   --accent-soft: #ccebe7;
   --hit: #fde68a;
+  --hover: #7dd3c8;
   --branch: #8b6b3f;
   --border: #e3ded3;
   --arabic: "Amiri Quran", "Scheherazade New", "Traditional Arabic", serif;
@@ -40,28 +41,51 @@ aside { position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: 
 .ayah-body { flex: 1; min-width: 0; }
 .arabic { font-family: var(--arabic); font-size: 28px; line-height: 2.1; margin: 0; }
 .arabic-inline { font-family: var(--arabic); font-size: 20px; }
+.translit { margin: 0 0 2px; color: var(--accent); font-style: italic; font-size: 14px; }
 .translation { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
-.w { border-radius: 6px; padding: 0 2px; transition: background .1s; }
+/* Each word is its own roomy box so neighbouring words never share a hit area. */
+.w { display: inline-block; padding: 0 6px; margin: 2px 1px; line-height: 1.9; border-radius: 10px;
+     transition: background .08s, box-shadow .08s, transform .08s; }
 .w.has-root { cursor: pointer; }
-.w.has-root:hover { background: var(--accent-soft); }
 .w.no-root { color: #4b5563; }
-.w.same-root { background: var(--accent-soft); }
-.w.hit { background: var(--hit); }
+.w.same-root { background: var(--accent-soft); }                       /* other words with the selected root */
+.w.hit { background: var(--hit); }                                      /* drill-down match */
+.w.clicked { background: var(--accent-soft); box-shadow: inset 0 -4px 0 var(--accent); }  /* the word you clicked */
+.w:hover { background: var(--hover); box-shadow: 0 0 0 2px var(--accent); position: relative; z-index: 1; }
+.w.no-root:hover { background: #e5e7eb; box-shadow: 0 0 0 2px #9ca3af; }
+.w.has-root:active { transform: scale(.96); }
 .stop { color: var(--muted); }
 
 /* Hover card */
-.hover-card { position: fixed; z-index: 10; width: 330px; background: #111827; color: #f9fafb; border-radius: 10px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(0,0,0,.25); pointer-events: none; font-size: 13px; }
-.hc-root { font-family: var(--arabic); font-size: 30px; text-align: center; letter-spacing: 6px; }
-.hc-noroot { font-weight: 600; } .hc-noroot span { font-weight: 400; color: #9ca3af; }
-.hover-card dl { display: grid; grid-template-columns: 70px 1fr; gap: 2px 8px; margin: 6px 0; }
-.hover-card dt { color: #9ca3af; } .hover-card dd { margin: 0; font-family: inherit; }
-.hover-card dd[lang="ar"] { font-family: var(--arabic); font-size: 18px; }
+.hover-card { position: fixed; z-index: 10; width: 360px; background: #111827; color: #f9fafb; border-radius: 12px; padding: 12px 14px; box-shadow: 0 8px 24px rgba(0,0,0,.3); pointer-events: none; font-size: 13px; }
+.hc-label { display: block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #9ca3af; font-weight: 500; }
+.hc-meaning { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+.hc-root { font-family: var(--arabic); font-size: 30px; text-align: center; letter-spacing: 6px; margin: 2px 0; }
+.hc-noroot { color: #9ca3af; text-align: center; margin: 4px 0; }
+.hc-kind { margin: 6px 0 4px; padding: 5px 8px; background: #1f2937; border-radius: 8px; }
+.hc-kind span { color: #9ca3af; }
+.hover-card dl { margin: 4px 0; }
+.hc-row { display: grid; grid-template-columns: 112px 1fr; gap: 8px; padding: 2px 0; }
+.hc-row dt { color: #9ca3af; } .hc-row dd { margin: 0; }
+.hc-row dd[lang="ar"] { font-family: var(--arabic); font-size: 19px; }
+.hc-lemma { margin: 0; }
+.hc-tenses { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.hc-tense { background: #1f2937; border-radius: 8px; padding: 6px 8px; text-align: center; }
+.hc-tense-title { font-size: 11px; color: #9ca3af; } .hc-tense-title span { color: #6b7280; }
+.hc-tense-form { font-family: var(--arabic); font-size: 24px; line-height: 1.6; }
+.hc-tense-ref { font-size: 10px; color: #6b7280; }
+.hc-tense-none { font-size: 12px; color: #6b7280; padding: 10px 0; }
+.hc-note { grid-column: 1 / -1; font-size: 10px; color: #6b7280; text-align: center; margin-top: -2px; }
 .hc-trans { margin-top: 8px; padding-top: 8px; border-top: 1px solid #374151; color: #d1d5db; }
 
 /* Root panel */
 select, input { font: inherit; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
 .tree-svg { width: 100%; height: auto; }
 .tree-svg circle { fill: var(--card); stroke: var(--branch); stroke-width: 2.5; }
+.tree-svg .hit { fill: transparent; }
+.tree-svg .node.leaf:hover .hit { fill: var(--accent-soft); }
+.tree-svg .node.leaf:hover circle { stroke: var(--accent); fill: var(--accent-soft); }
+.tree-svg .node.selected .hit { fill: #e8f6f4; }
 .tree-svg .node.selected circle { fill: var(--accent); stroke: var(--accent); }
 .tree-svg .node.selected text { fill: var(--accent); font-weight: 700; }
 .tree-svg .count { fill: var(--muted); font-family: system-ui, sans-serif; }
@@ -69,13 +93,19 @@ select, input { font: inherit; padding: 6px 8px; border: 1px solid var(--border)
 .dist { display: grid; grid-template-columns: repeat(30, 1fr); gap: 2px; height: 70px; }
 .bar { position: relative; border: 0; background: #f3f4f6; border-radius: 3px; padding: 0; cursor: default; display: flex; align-items: flex-end; }
 .bar.on { cursor: pointer; }
+.bar.on:hover { background: var(--accent-soft); outline: 2px solid var(--accent); }
 .bar-fill { display: block; width: 100%; background: var(--accent); border-radius: 3px; }
 .bar-label { position: absolute; bottom: -16px; left: 0; right: 0; font-size: 9px; color: var(--muted); text-align: center; }
 .dist { margin-bottom: 22px; }
 
-.cross { margin: 0; padding-left: 18px; }
+.chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 10px; background: #fff; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; font: inherit; color: var(--ink); transition: background .08s, border-color .08s, box-shadow .08s; }
+.chip:hover { background: var(--accent-soft); border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.chip:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.chip:active { transform: scale(.97); }
+.chip-root { font-family: var(--arabic); font-size: 22px; line-height: 1.6; }
+.chip-ayahs { font-size: 12px; color: var(--muted); }
 .link { background: none; border: 0; color: var(--accent); cursor: pointer; font: inherit; padding: 0 2px; text-decoration: underline; }
-.cross .link { font-family: var(--arabic); font-size: 18px; }
 
 /* Ask box + debug */
 .ask-form { display: flex; gap: 8px; }

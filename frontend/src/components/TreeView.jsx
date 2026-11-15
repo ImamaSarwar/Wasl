@@ -41,10 +41,23 @@ export default function TreeView({ tree, selectedLemma, onSelectForm }) {
       .selectAll("g.node")
       .data(hier.descendants())
       .join("g")
-      .attr("class", (d) => "node" + (d.depth && d.data.name === selectedLemma ? " selected" : ""))
+      .attr("class", (d) =>
+        "node" + (d.depth ? " leaf" : "") + (d.depth && d.data.name === selectedLemma ? " selected" : "")
+      )
       .attr("transform", (d) => `translate(${d.y},${d.x})`)
       .style("cursor", (d) => (d.depth ? "pointer" : "default"))
       .on("click", (_e, d) => d.depth && onSelectForm(d.data.name));
+
+    // A generous invisible row behind each branch label: easier to hit, and lights up on hover.
+    node
+      .filter((d) => d.depth)
+      .append("rect")
+      .attr("class", "hit")
+      .attr("x", -16)
+      .attr("y", -19)
+      .attr("width", 196)
+      .attr("height", 38)
+      .attr("rx", 8);
 
     node.append("circle").attr("r", (d) => (d.depth ? 6 : 9));
 

@@ -10,6 +10,7 @@ export default function App() {
   const [ayahs, setAyahs] = useState([]);
   const [roots, setRoots] = useState([]);
   const [selectedRoot, setSelectedRoot] = useState(null);
+  const [clickedId, setClickedId] = useState(null); // the exact word the user clicked (for a clear marker)
   const [hover, setHover] = useState(null);
   const [error, setError] = useState(null);
 
@@ -23,6 +24,12 @@ export default function App() {
 
   const onHover = useCallback((word, ayah, rect) => {
     setHover(word ? { word, ayah, rect } : null);
+  }, []);
+
+  // Called with (root, wordId) when a word is clicked, or just (root) from the dropdown / chips.
+  const selectRoot = useCallback((root, wordId = null) => {
+    setSelectedRoot(root || null);
+    setClickedId(wordId);
   }, []);
 
   const jumpToAyah = useCallback((n) => {
@@ -45,8 +52,9 @@ export default function App() {
               key={a.ayah}
               ayah={a}
               selectedRoot={selectedRoot}
+              clickedId={clickedId}
               onHover={onHover}
-              onWordClick={setSelectedRoot}
+              onWordClick={selectRoot}
             />
           ))}
         </section>
@@ -56,7 +64,8 @@ export default function App() {
             root={selectedRoot}
             roots={roots}
             ayahsByNum={ayahsByNum}
-            onSelectRoot={setSelectedRoot}
+            clickedId={clickedId}
+            onSelectRoot={selectRoot}
             onHover={onHover}
             onJumpToAyah={jumpToAyah}
           />

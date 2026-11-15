@@ -5,7 +5,7 @@ import AyahLine from "./AyahLine.jsx";
 
 // Everything about ONE selected root: family tree, distribution across ayahs,
 // verse drill-down for the selected form, and roots that co-occur with it.
-export default function RootPanel({ root, roots, ayahsByNum, onSelectRoot, onHover, onJumpToAyah }) {
+export default function RootPanel({ root, roots, ayahsByNum, clickedId, onSelectRoot, onHover, onJumpToAyah }) {
   const [tree, setTree] = useState(null);
   const [dist, setDist] = useState([]);
   const [cross, setCross] = useState([]);
@@ -78,15 +78,19 @@ export default function RootPanel({ root, roots, ayahsByNum, onSelectRoot, onHov
           {cross.length > 0 && (
             <>
               <h3>Appears together with</h3>
-              <ul className="cross">
+              <ul className="chips">
                 {cross.slice(0, 8).map((c) => {
                   const other = c.root_a === root ? c.root_b : c.root_a;
                   return (
                     <li key={other}>
-                      <button className="link" dir="rtl" lang="ar" onClick={() => onSelectRoot(other)}>
-                        {other}
+                      <button
+                        className="chip"
+                        title={`Open the root ${other}`}
+                        onClick={() => onSelectRoot(other)}
+                      >
+                        <span className="chip-root" dir="rtl" lang="ar">{other}</span>
+                        <span className="chip-ayahs">ayah{c.ayahs.length === 1 ? "" : "s"} {c.ayahs.join(", ")}</span>
                       </button>
-                      <span> in ayahs {c.ayahs.join(", ")}</span>
                     </li>
                   );
                 })}
@@ -104,6 +108,7 @@ export default function RootPanel({ root, roots, ayahsByNum, onSelectRoot, onHov
               <AyahLine
                 key={d.ayah}
                 ayah={ayah}
+                clickedId={clickedId}
                 highlightIds={new Set(d.word_ids.split(",").map(Number))}
                 onHover={onHover}
                 onWordClick={onSelectRoot}
