@@ -51,7 +51,8 @@ def _summarise(ev):
 def _ayah_lines(ayahs, limit=6):
     lines = [f"[67:{a['ayah']}] {a['translation']}" for a in ayahs[:limit]]
     if len(ayahs) > limit:
-        lines.append(f"... and {len(ayahs) - limit} more ayahs (see the root panel).")
+        n = len(ayahs) - limit
+        lines.append(f"... and {n} more ayah{'s' if n != 1 else ''} (see the root panel).")
     return "\n".join(lines)
 
 
