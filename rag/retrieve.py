@@ -18,7 +18,7 @@ from backend import queries
 # Minimum best-ayah score to answer instead of refusing. TUNE these with the eval sweep.
 THRESHOLDS = {
     "tfidf": 0.18,   # lowest value that refuses every no_match dev question; only 6 dev questions, so weak evidence
-    "minilm": 0.30,   # UNTUNED placeholder: run `WASL_RETRIEVER=minilm python eval/run_eval.py --sweep`
+    "minilm": 0.24,   # middle of the 0.20-0.28 plateau on the dev sweep (6 questions - re-tune with more)
 }
 TOP_K = 3
 

@@ -87,6 +87,25 @@ class TestSemantic(unittest.TestCase):
         self.assertTrue(answer("Explain quantum computing")["refused"])
 
 
+class TestScopeGates(unittest.TestCase):
+    def test_other_surahs_are_refused(self):
+        for q in ["Tell me about Surah Al-Baqarah", "What is in surah 2?", "explain 2:255",
+                  "words in al-Fatiha", "How is khalaqa used in Surah Yasin?"]:
+            r = answer(q)
+            self.assertTrue(r["refused"], q)
+            self.assertEqual(r["intent"], "other_surah", q)
+
+    def test_al_mulk_questions_are_not_blocked(self):
+        for q in ["How is khalaqa used across Surah Al-Mulk?", "What does the surah say about birds?",
+                  "Show me 67:3", "Which ayah in surah 67 mentions water?", "What does the surah say about hearing?"]:
+            self.assertNotEqual(answer(q)["intent"], "other_surah", q)
+
+    def test_tafsir_is_declined(self):
+        r = answer("What is the correct tafsir of ayah 2?")
+        self.assertTrue(r["refused"])
+        self.assertEqual(r["intent"], "out_of_scope")
+
+
 class TestEvidence(unittest.TestCase):
     def test_khalaqa_matches_existing_queries(self):
         ev = root_evidence("خلق")

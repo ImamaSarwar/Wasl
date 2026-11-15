@@ -23,6 +23,32 @@ OUT_OF_SCOPE = re.compile(
     r"is it (?:a )?sin|rulings? (?:on|for|of|about)|am i allowed|"
     r"will (?:i|they|he|she) go to (?:hell|heaven|jannah|jahannam))\b", re.I)
 
+# The assistant covers Surah Al-Mulk only. A question that names another surah (or an ayah of
+# another surah) is refused up front: embedding search would otherwise return a loosely related
+# Al-Mulk ayah with a confident-looking score (seen in eval: "Tell me about Surah Al-Baqarah").
+_OTHER_SURAHS = (
+    "fatihah|fatiha|baqarah|baqara|imran|nisa|maidah|maida|anam|araf|anfal|tawbah|taubah|tawba|yunus|hud|"
+    "yusuf|rad|ibrahim|hijr|nahl|isra|kahf|maryam|ta-?ha|taha|anbiya|hajj|muminun|mu'minun|nur|furqan|"
+    "shuara|naml|qasas|ankabut|rum|luqman|sajdah|sajda|ahzab|saba|fatir|ya-?sin|yaseen|saffat|sad|zumar|"
+    "ghafir|fussilat|shura|zukhruf|dukhan|jathiyah|ahqaf|muhammad|fath|hujurat|qaf|dhariyat|tur|najm|"
+    "qamar|rahman|waqiah|waqi'ah|hadid|mujadilah|hashr|mumtahanah|saff|jumu'?ah|munafiqun|taghabun|talaq|"
+    "tahrim|qalam|haqqah|ma'?arij|nuh|jinn|muzzammil|muddaththir|muddathir|qiyamah|insan|mursalat|naba|"
+    "naziat|abasa|takwir|infitar|mutaffifin|inshiqaq|buruj|tariq|ala|ghashiyah|fajr|balad|shams|layl|duha|"
+    "sharh|inshirah|tin|alaq|qadr|bayyinah|zalzalah|adiyat|qariah|takathur|asr|humazah|fil|quraysh|"
+    "ma'?un|kawthar|kausar|kafirun|nasr|masad|lahab|ikhlas|falaq|nas"
+)
+OTHER_SURAH = re.compile(
+    rf"\b(?:(?:surah|sura|surat|chapter)\s+(?:(?:al|an|at|ash|as|ad|ar|az|adh|ath)[-\s']*)?(?:{_OTHER_SURAHS})\b"
+    rf"|(?:surah|sura|surat|chapter)\s+(?!67\b)\d{{1,3}}\b"
+    rf"|(?:al|an|at|ash|as|ad|ar|az|adh|ath)-(?:{_OTHER_SURAHS})\b"
+    rf"|(?!67:)\d{{1,3}}:\d{{1,3}})",
+    re.I)
+TAFSIR = re.compile(r"\b(tafsir|tafseer|exegesis|interpretation of|what does .* really mean)\b", re.I)
+
+REFUSAL_OTHER_SURAH = ("This assistant only covers Surah Al-Mulk (67). Please ask about a root, word "
+                       "form or topic in that surah.")
+REFUSAL_TAFSIR = ("I answer questions about vocabulary and root usage only, not interpretation (tafsir). "
+                  "Please consult a qualified scholar for the meaning of ayahs.")
 REFUSAL_SCOPE = ("I can only answer questions about the vocabulary and root usage of Surah Al-Mulk. "
                  "I don't give rulings, fatwas or personal religious advice - please ask a qualified scholar.")
 REFUSAL_NOT_FOUND = ("I couldn't match your question to a root in Surah Al-Mulk, so I don't have enough "
@@ -99,6 +125,10 @@ def answer(question, retriever=None, threshold=None):
         return _refuse("Please type a question.", "empty")
     if OUT_OF_SCOPE.search(q):
         return _refuse(REFUSAL_SCOPE, "out_of_scope")
+    if OTHER_SURAH.search(q):
+        return _refuse(REFUSAL_OTHER_SURAH, "other_surah")
+    if TAFSIR.search(q):
+        return _refuse(REFUSAL_TAFSIR, "out_of_scope")
 
     r = resolve(q)
     direct = [it["root"] for it in r["direct"]]
