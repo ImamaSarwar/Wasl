@@ -43,3 +43,10 @@ def compare_evidence(root_a, root_b):
         return None
     shared = sorted({x["ayah"] for x in a["ayahs"]} & {x["ayah"] for x in b["ayahs"]})
     return {"a": a, "b": b, "shared_ayahs": shared}
+
+
+def ayah_evidence(scored):
+    """Evidence for semantic hits: [(ayah, score), ...] -> list of ayah dicts (best first)."""
+    by = {a["ayah"]: a for a in queries.get_ayahs()}
+    return [{"id": f"67:{n}", "ayah": n, "arabic": by[n]["arabic"], "translation": by[n]["translation"],
+             "score": round(score, 3)} for n, score in scored]

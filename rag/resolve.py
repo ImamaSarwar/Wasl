@@ -39,12 +39,21 @@ def _fold_root(r):
     return strip_arabic(r).replace("ا", "ء").replace("ء", "ا")
 
 
+_LATIN_FOLD = str.maketrans({"ṣ": "s", "ḥ": "h", "ṭ": "t", "ḍ": "d", "ẓ": "z", "ā": "a", "ī": "i", "ū": "u",
+                             "š": "sh", "ḏ": "dh", "ṯ": "th", "ġ": "gh", "ḫ": "kh", "ǧ": "j",
+                             "Ṣ": "S", "Ḥ": "H", "Ṭ": "T", "Ḍ": "D", "Ẓ": "Z"})
+
+
 def _norm_latin(s):
-    return re.sub(r"[^a-z'`^]", "", s.lower().translate(_APOS))
+    return re.sub(r"[^a-z'`^]", "", s.translate(_LATIN_FOLD).lower().translate(_APOS))
 
 
 def _norm_lemma(s):
-    return re.sub(r"['`^]", "", _norm_latin(s))
+    """Loose comparison key for a word form: ghafuwr, ghafur and ghafoor all become ghafur."""
+    s = re.sub(r"['`^]", "", _norm_latin(s))
+    for a, b in (("uw", "u"), ("oo", "u"), ("iy", "i"), ("ee", "i"), ("aa", "a")):
+        s = s.replace(a, b)
+    return s
 
 
 def _lookup_root(index, key):
@@ -113,6 +122,7 @@ def resolve(question):
     `direct` = the person named a root or a word form; `concept` = only an English concept word.
     Items keep their order of appearance in the question, one entry per root.
     """
+    question = question.translate(_LATIN_FOLD)
     question = _SURAH_NAME.sub(lambda m: " " * len(m.group()), question)  # keep positions stable
     found = {}  # root -> (position, item)
 
@@ -121,7 +131,7 @@ def resolve(question):
             found[root] = (pos, {"root": root, "via": via, "matched": matched})
 
     for m in _ARABIC_TOKEN.finditer(question):
-        tok = strip_arabic(m.group())
+        tok = strip_arabic("".join(c for c in m.group() if unicodedata.category(c)[0] in "LM"))
         # try the token, then without a leading و/ف/ب/ل/ال prefix (وَالْحَيَاةَ -> حياة)
         for cand in (tok, re.sub(r"^(?:[وفبلك])?(?:ال)?", "", tok)):
             if cand in _AR_ROOT:

@@ -1,0 +1,33 @@
+{"id": "s01", "type": "single_root", "question": "How is the root of khalaqa used across Surah Al-Mulk?", "split": "dev", "expect": {"roots": ["خلق"]}}
+{"id": "s02", "type": "single_root", "question": "Show me every ayah that uses kh-l-q", "split": "test", "expect": {"roots": ["خلق"]}}
+{"id": "s03", "type": "single_root", "question": "Where does the root of mawt (m-w-t) appear?", "split": "dev", "expect": {"roots": ["موت"]}}
+{"id": "s04", "type": "single_root", "question": "What forms of the root ʿ-l-m are used?", "split": "test", "expect": {"roots": ["علم"]}}
+{"id": "s05", "type": "single_root", "question": "ما هي الآيات التي فيها الجذر رحم؟", "split": "dev", "expect": {"roots": ["رحم"]}}
+{"id": "s06", "type": "single_root", "question": "How many times is the root n-dh-r used and in which forms?", "split": "test", "expect": {"roots": ["نذر"]}}
+{"id": "s07", "type": "single_root", "question": "Tell me about the word ghafur", "split": "dev", "expect": {"roots": ["غفر"]}}
+{"id": "c01", "type": "compare", "question": "Compare the roots q-d-r and '-l-m in this surah.", "split": "dev", "expect": {"roots": ["قدر", "علم"]}}
+{"id": "c02", "type": "compare", "question": "What is the difference between kh-l-q and m-w-t in this surah?", "split": "test", "expect": {"roots": ["خلق", "موت"]}}
+{"id": "c03", "type": "compare", "question": "Compare s-m-ʿ and b-ṣ-r usage in the surah", "split": "test", "expect": {"roots": ["سمع", "بصر"]}}
+{"id": "c04", "type": "compare", "question": "How do k-f-r and ʿ-dh-b relate in Surah Al-Mulk?", "split": "dev", "expect": {"roots": ["كفر", "عذب"]}}
+{"id": "k01", "type": "concept", "question": "Which ayahs use forms of the root for seeing?", "split": "dev", "expect": {"roots_include": ["رأي", "بصر"]}}
+{"id": "k02", "type": "concept", "question": "How does the surah use words for mercy?", "split": "test", "expect": {"roots_include": ["رحم"]}}
+{"id": "k03", "type": "concept", "question": "Where does the surah talk about knowing?", "split": "dev", "expect": {"roots_include": ["علم"]}}
+{"id": "k04", "type": "concept", "question": "Which words relate to warning in this surah?", "split": "test", "expect": {"roots_include": ["نذر"]}}
+{"id": "m01", "type": "semantic", "question": "What does the surah say about birds?", "split": "dev", "expect": {"relevant": [19]}}
+{"id": "m02", "type": "semantic", "question": "Which verses mention water?", "split": "test", "expect": {"relevant": [30]}}
+{"id": "m03", "type": "semantic", "question": "What happens to the people in hellfire?", "split": "dev", "expect": {"relevant": [6, 7, 8, 10, 11]}}
+{"id": "m04", "type": "semantic", "question": "Which ayahs talk about the stars?", "split": "test", "expect": {"relevant": [5]}}
+{"id": "m05", "type": "semantic", "question": "Where does it talk about walking?", "split": "dev", "expect": {"relevant": [15, 22]}}
+{"id": "m06", "type": "semantic", "question": "What does it say about being grateful?", "split": "test", "expect": {"relevant": [23]}}
+{"id": "m07", "type": "semantic", "question": "Is there an ayah about the resurrection or being gathered?", "split": "dev", "expect": {"relevant": [15, 24]}}
+{"id": "m08", "type": "semantic", "question": "What does the surah say about eating?", "split": "test", "expect": {"relevant": [15]}}
+{"id": "o01", "type": "out_of_scope", "question": "Is it haram to disbelieve?", "split": "dev", "expect": {"refused": true}}
+{"id": "o02", "type": "out_of_scope", "question": "Give me a fatwa on what this surah says about punishment", "split": "test", "expect": {"refused": true}}
+{"id": "o03", "type": "out_of_scope", "question": "Is it a sin to not be grateful?", "split": "dev", "expect": {"refused": true}}
+{"id": "o04", "type": "out_of_scope", "question": "Will I go to hell if I disbelieve?", "split": "test", "expect": {"refused": true}}
+{"id": "n01", "type": "no_match", "question": "What is the capital of France?", "split": "dev", "expect": {"refused": true}}
+{"id": "n02", "type": "no_match", "question": "Who won the football world cup?", "split": "test", "expect": {"refused": true}}
+{"id": "n03", "type": "no_match", "question": "How do I bake bread?", "split": "dev", "expect": {"refused": true}}
+{"id": "n04", "type": "no_match", "question": "Tell me about Surah Al-Baqarah", "split": "test", "expect": {"refused": true}}
+{"id": "n05", "type": "no_match", "question": "What is the correct tafsir of ayah 2?", "split": "dev", "expect": {"refused": true}}
+{"id": "n06", "type": "no_match", "question": "Explain quantum computing", "split": "test", "expect": {"refused": true}}

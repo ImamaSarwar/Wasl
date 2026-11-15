@@ -9,7 +9,8 @@ Response: {answer, citations [ayah numbers], refused, verification_errors, inten
 """
 import re
 
-from .evidence import compare_evidence, root_evidence
+from . import retrieve
+from .evidence import ayah_evidence, compare_evidence, root_evidence
 from .resolve import resolve
 
 # The assistant covers vocabulary and wording only. Rulings, fatwas and personal religious
@@ -76,7 +77,23 @@ def _refuse(message, intent, roots=()):
             "intent": intent, "roots": list(roots), "evidence": None}
 
 
-def answer(question):
+def _semantic(q, retriever=None, threshold=None):
+    """No root named: find ayahs by meaning. Refuse if even the best match is too weak."""
+    ret = retriever or retrieve.get_retriever()
+    thr = retrieve.threshold(ret.name) if threshold is None else threshold
+    hits = [(n, sc) for n, sc in ret.search(q, retrieve.TOP_K) if sc >= thr]
+    if not hits:
+        return _refuse(REFUSAL_NOT_FOUND, "no_match")
+    ev = ayah_evidence(hits)
+    lines = "\n".join(f"[67:{a['ayah']}] {a['translation']}" for a in ev)
+    return {"answer": "No root was named, so these are the ayahs whose translation is closest in "
+                      "meaning to your question:\n\n" + lines,
+            "citations": sorted(a["ayah"] for a in ev), "refused": False, "verification_errors": [],
+            "intent": "semantic", "roots": [], "matched": [], "retriever": ret.name,
+            "evidence": ev}
+
+
+def answer(question, retriever=None, threshold=None):
     q = (question or "").strip()
     if not q:
         return _refuse("Please type a question.", "empty")
@@ -94,7 +111,7 @@ def answer(question):
     elif concept:
         intent, roots = "concept", concept
     else:
-        return _refuse(REFUSAL_NOT_FOUND, "no_match")
+        return _semantic(q, retriever, threshold)
 
     evs = [e for e in (root_evidence(x) for x in roots) if e]
     if not evs:

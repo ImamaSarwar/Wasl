@@ -53,6 +53,40 @@ class TestResolve(unittest.TestCase):
         self.assertEqual(roots("Which ayahs use the root for seeing?", "concept"), ["رأي", "بصر"])
 
 
+class TestResolveRegressions(unittest.TestCase):
+    """Bugs found by eval/run_eval.py - keep them fixed."""
+
+    def test_arabic_question_mark_is_not_part_of_the_word(self):
+        self.assertEqual(roots("ما هي الآيات التي فيها الجذر رحم؟"), ["رحم"])
+
+    def test_common_spellings_of_a_word_form(self):
+        for spelling in ("ghafur", "ghafoor", "ghafuwr"):
+            self.assertEqual(roots(f"Tell me about the word {spelling}"), ["غفر"], spelling)
+
+    def test_latin_diacritics_are_folded(self):
+        self.assertEqual(roots("Compare s-m-ʿ and b-ṣ-r"), ["سمع", "بصر"])
+
+    def test_question_boilerplate_say_is_not_the_speech_concept(self):
+        self.assertEqual(roots("What does the surah say about eating?", "concept"), [])
+
+
+class TestSemantic(unittest.TestCase):
+    def test_retriever_ranks_the_provision_ayah_first(self):
+        from rag.retrieve import get_retriever
+        top = get_retriever("tfidf").search("provision")[0][0]
+        self.assertIn(top, (15, 21))
+
+    def test_semantic_fallback_answers_and_cites_evidence(self):
+        r = answer("What happens to the people in hellfire?", retriever=None)
+        self.assertFalse(r["refused"])
+        self.assertEqual(r["intent"], "semantic")
+        self.assertIn(6, r["citations"])
+        self.assertTrue(all(0 <= a["score"] <= 1 for a in r["evidence"]))
+
+    def test_very_weak_match_is_refused(self):
+        self.assertTrue(answer("Explain quantum computing")["refused"])
+
+
 class TestEvidence(unittest.TestCase):
     def test_khalaqa_matches_existing_queries(self):
         ev = root_evidence("خلق")

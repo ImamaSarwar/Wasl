@@ -2,6 +2,7 @@
 # sentence-transformers pulls in PyTorch, which is a large download - don't install it on day one.
 -r requirements.txt
 numpy
+scikit-learn   # TF-IDF baseline retriever (also pulled in by sentence-transformers)
 sentence-transformers
 anthropic
 # openai
