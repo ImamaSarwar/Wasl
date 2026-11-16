@@ -2,3 +2,5 @@
 * text=auto eol=lf
 *.txt text eol=lf
 *.csv text eol=lf
+*.db binary
+*.mp3 binary

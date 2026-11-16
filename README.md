@@ -224,6 +224,29 @@ Added to the hover card and the reader:
 **After pulling these changes, rebuild the database:** `python scripts/build_db.py`
 (the schema gained columns, and `data/quran.db` is not stored in git).
 
+## 5c. Recitations (several reciters) and tafsir
+
+Each ayah has two controls at the top right: **Listen** (play / pause) and **Tafsir** (open / close the commentary).
+The reciter is chosen once, top right of the surah card (it is remembered in the browser). **Play surah** recites
+the whole surah, ayah by ayah, and scrolls along. While an ayah plays, the word being recited is highlighted.
+
+| What | Where | Notes |
+|---|---|---|
+| Reciter files | `data/raw/recitations/` | `.json` or `.db` exports from qul.tarteel.ai. **Drop in another file and re-run `python scripts/build_db.py`** to add a reciter; it is detected automatically (per-ayah MP3s or one whole-surah MP3). |
+| Reciter names and order | `data/reciters.json` | Optional. A file not listed there still works; its name is guessed from the file name. The first reciter listed is the default. |
+| Tafsir | `data/raw/tafsir/` | Ibn Kathir (English). Add another `.json` in the same format for another tafsir; a dropdown appears when there is more than one. |
+| Import code | `scripts/import_audio.py`, `scripts/import_tafsir.py` | Prints what it imported, and **skips (with a message) any reciter that is missing an ayah**. |
+
+Things to know:
+- **The recitation files contain links, not audio.** The browser streams each MP3 from the link (Quran.com and Tarteel
+  CDNs), so playback needs an internet connection. If a link stops working, the ayah shows "could not be loaded".
+- **Tafsir is grouped.** One commentary text covers several ayahs (here 1-5, 6-11, 12-15, 16-19, 20-27, 28-30).
+  Opening tafsir on ayah 3 shows the 1-5 text and says so.
+- The tafsir HTML is **cleaned during the build** (only simple text tags are kept) before it is shown.
+- The raw files add about 23 MB to the repo (the tafsir JSON is 15 MB). That is fine for GitHub.
+- The API gained `GET /api/reciters`, `GET /api/recitations/{id}`, `GET /api/tafsir` and `GET /api/tafsir/{source}/{ayah}`.
+- A handful of ayahs in some recitations repeat a word, so a word may light up twice. That is the reciter, not a bug.
+
 ## 6. Troubleshooting
 
 | Symptom | Fix |

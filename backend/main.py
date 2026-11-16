@@ -67,6 +67,32 @@ def cross(root: str | None = None, min_ayahs: int = 2):
     return queries.cross(root, min_ayahs)
 
 
+@app.get("/api/reciters")
+def reciters():
+    return queries.list_reciters()
+
+
+@app.get("/api/recitations/{reciter_id}")
+def recitations(reciter_id: str):
+    r = queries.get_recitations(reciter_id)
+    if r is None:
+        raise HTTPException(404, f"unknown reciter '{reciter_id}'")
+    return r
+
+
+@app.get("/api/tafsir")
+def tafsir_sources():
+    return queries.list_tafsir_sources()
+
+
+@app.get("/api/tafsir/{source_id}/{ayah}")
+def tafsir(source_id: str, ayah: int):
+    t = queries.get_tafsir(source_id, ayah)
+    if t is None:
+        raise HTTPException(404, "no commentary for this ayah")
+    return t
+
+
 class AskRequest(BaseModel):
     question: str
 

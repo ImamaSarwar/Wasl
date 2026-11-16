@@ -32,5 +32,9 @@ export const api = {
   formAyahs: (root, lemma) => request("GET", `/api/roots/${enc(root)}/forms/${enc(lemma)}/ayahs`),
   distribution: (root) => request("GET", `/api/roots/${enc(root)}/distribution`),
   cross: (root) => request("GET", `/api/cross${root ? `?root=${enc(root)}` : ""}`),
+  reciters: () => request("GET", "/api/reciters"),
+  recitations: (reciterId) => request("GET", `/api/recitations/${enc(reciterId)}`),
+  tafsirSources: () => request("GET", "/api/tafsir"),
+  tafsir: (sourceId, ayah) => request("GET", `/api/tafsir/${enc(sourceId)}/${ayah}`),
   ask: (question) => request("POST", "/api/ask", { question }),
 };

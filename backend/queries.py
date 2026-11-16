@@ -2,6 +2,7 @@
 All database logic lives here as plain functions (no FastAPI imports), so it can be tested
 without a web server. backend/main.py only wraps these in HTTP endpoints.
 """
+import json
 import os
 import sqlite3
 from pathlib import Path
@@ -111,3 +112,41 @@ def root_words(root):
         "SELECT w.word_id, w.ayah, w.pos, w.arabic AS word_arabic, w.lemma, w.pos_tag, w.grammar, "
         "a.arabic AS ayah_arabic, a.translation FROM words w JOIN ayahs a USING(ayah) "
         "WHERE w.root=? ORDER BY w.ayah, w.pos", (root,))
+
+
+# ---------- recitations ----------------------------------------------------------------------------
+
+def list_reciters():
+    """Reciters in display order. The first one is the default in the app."""
+    return _rows("SELECT reciter_id AS id, name FROM reciters ORDER BY sort_order")
+
+
+def get_recitations(reciter_id):
+    """Everything the player needs for one reciter: {ayah: {url, start_ms, end_ms, segments}}.
+    start_ms/end_ms are set for whole-surah MP3s (where in the file this ayah is), else None.
+    segments = [[word_number, start_ms, end_ms], ...] on the MP3's own clock, or None if unusable.
+    Returns None for an unknown reciter."""
+    if not _rows("SELECT 1 FROM reciters WHERE reciter_id=?", (reciter_id,)):
+        return None
+    out = {}
+    for r in _rows("SELECT ayah, url, start_ms, end_ms, segments FROM recitations WHERE reciter_id=? ORDER BY ayah",
+                   (reciter_id,)):
+        out[r["ayah"]] = {"url": r["url"], "start_ms": r["start_ms"], "end_ms": r["end_ms"],
+                          "segments": json.loads(r["segments"]) if r["segments"] else None}
+    return out
+
+
+# ---------- tafsir ----------------------------------------------------------------------------------
+
+def list_tafsir_sources():
+    return _rows("SELECT source_id AS id, name FROM tafsir_sources ORDER BY sort_order")
+
+
+def get_tafsir(source_id, ayah):
+    """The commentary that covers this ayah. Commentary is grouped, so group_start..group_end
+    says which ayahs the text is about. `html` is already sanitized. None if there is none."""
+    rows = _rows(
+        "SELECT t.source_id, s.name AS source, t.group_start, t.group_end, t.html "
+        "FROM tafsir t JOIN tafsir_sources s USING(source_id) "
+        "WHERE t.source_id=? AND t.group_start<=? AND t.group_end>=?", (source_id, ayah, ayah))
+    return {**rows[0], "ayah": ayah} if rows else None

@@ -1,0 +1,9 @@
+{
+  "_comment": "Optional. Display names and order for the reciter files in data/raw/recitations/. A file that is not listed here is still imported; its name is guessed from the file name and it is placed last. The first reciter in the list is the default one in the app.",
+  "reciters": [
+    { "id": "afasy",  "name": "Mishari Rashid al-Afasy",  "file": "ayah-recitation-mishari-rashid-al-afasy-murattal-hafs-953.db" },
+    { "id": "sudais", "name": "Abdur-Rahman As-Sudais",   "file": "ayah-recitation-abdur-rahman-as-sudais-recitation.json" },
+    { "id": "nufais", "name": "Al-Nufais",                "file": "ayah-recitation-alnufais.json" },
+    { "id": "dosari", "name": "Yasser Al-Dosari",         "file": "surah-recitation-yasser-al-dosari.db" }
+  ]
+}
