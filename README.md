@@ -247,6 +247,23 @@ Things to know:
 - The API gained `GET /api/reciters`, `GET /api/recitations/{id}`, `GET /api/tafsir` and `GET /api/tafsir/{source}/{ayah}`.
 - A handful of ayahs in some recitations repeat a word, so a word may light up twice. That is the reciter, not a bug.
 
+## 5d. Personal notes
+
+Each ayah has a **Notes** button (open book with a pen) to the right of **Tafsir**. It opens a ruled-paper note
+below the ayah (above the tafsir, if both are open). **Save** stores it and closes the panel; a small gold dot then
+appears on the ayah number. Click the dot or **Notes** to read or edit it again.
+
+- **No account, no server.** Notes are stored in the browser's `localStorage` on that device
+  (`wasl.notes.v1`). We use localStorage rather than cookies because cookies hold only ~4 KB each and are sent
+  to the server with every request; for the user it behaves the same way (stays on this browser).
+- **Not synced between devices or browsers**, and clearing the browser's site data deletes them. That is why there is an
+  **Export notes** button (top right of the surah card, shown once a note exists): it downloads every note, with its
+  ayah, as a `.txt` file.
+- Closing a panel without saving keeps what was typed as a draft; leaving the page with unsaved text asks first.
+  `Ctrl/Cmd + Enter` saves, `Esc` closes. Deleting asks for confirmation.
+- Code: `frontend/src/notesStore.js` (storage logic, no React), `hooks/useNotes.js`, `components/NotesPanel.jsx`.
+- Tests for the storage logic: `cd frontend && npm test` (Node's built-in test runner; nothing extra to install).
+
 ## 6. Troubleshooting
 
 | Symptom | Fix |

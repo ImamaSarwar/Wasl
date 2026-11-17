@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api.js";
 import { usePlayer } from "./hooks/usePlayer.js";
+import { useNotes } from "./hooks/useNotes.js";
+import { buildExport } from "./notesStore.js";
 import ReaderHeader from "./components/ReaderHeader.jsx";
 import AyahLine from "./components/AyahLine.jsx";
 import HoverCard from "./components/HoverCard.jsx";
@@ -22,6 +24,8 @@ export default function App() {
   const [recsFor, setRecsFor] = useState({ id: null, data: null }); // timings for ONE reciter, tagged with whose they are
   const [tafsirSources, setTafsirSources] = useState([]);
   const [openTafsir, setOpenTafsir] = useState(() => new Set()); // ayah numbers whose tafsir is open
+  const notes = useNotes();
+  const [openNotes, setOpenNotes] = useState(() => new Set()); // ayah numbers whose notes panel is open
   const resume = useRef(null); // if the reciter changes mid-recitation: { ayah, continuous } to carry on with
 
   const recs = recsFor.id === reciterId ? recsFor.data : null; // never play the previous reciter's data
@@ -77,6 +81,30 @@ export default function App() {
     });
   }, []);
 
+  const toggleNotes = useCallback((n) => {
+    setOpenNotes((prev) => {
+      const next = new Set(prev);
+      next.has(n) ? next.delete(n) : next.add(n);
+      return next;
+    });
+  }, []);
+
+  // The gold dot on the ayah number opens the note (it never closes it).
+  const openNotesFor = useCallback((n) => setOpenNotes((prev) => new Set(prev).add(n)), []);
+
+  // Download every note as a text file: a safety copy, since notes live only in this browser.
+  const exportNotes = useCallback(() => {
+    const text = "\uFEFF" + buildExport(ayahs, notes.saved);
+    const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `wasl-notes-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [ayahs, notes.saved]);
+
   // While the whole surah is being recited, keep the current ayah in view.
   useEffect(() => {
     if (player.continuous && player.ayah != null) {
@@ -111,7 +139,8 @@ export default function App() {
 
       <main>
         <section className="reader card">
-          <ReaderHeader reciters={reciters} reciterId={reciterId} onChangeReciter={changeReciter} player={player} />
+          <ReaderHeader reciters={reciters} reciterId={reciterId} onChangeReciter={changeReciter} player={player}
+                        noteCount={notes.count} onExportNotes={exportNotes} />
           {ayahs.map((a) => (
             <AyahLine
               key={a.ayah}
@@ -125,6 +154,10 @@ export default function App() {
               tafsirSources={tafsirSources}
               tafsirOpen={openTafsir.has(a.ayah)}
               onToggleTafsir={() => toggleTafsir(a.ayah)}
+              notes={notes}
+              notesOpen={openNotes.has(a.ayah)}
+              onToggleNotes={() => toggleNotes(a.ayah)}
+              onOpenNotes={() => openNotesFor(a.ayah)}
             />
           ))}
         </section>

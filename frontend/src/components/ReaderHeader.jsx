@@ -1,5 +1,5 @@
 // Title of the surah plus the two global listening controls: choose a reciter, and play the whole surah.
-export default function ReaderHeader({ reciters, reciterId, onChangeReciter, player }) {
+export default function ReaderHeader({ reciters, reciterId, onChangeReciter, player, noteCount = 0, onExportNotes }) {
   const listening = player.continuous && player.status !== "idle";
 
   return (
@@ -9,19 +9,26 @@ export default function ReaderHeader({ reciters, reciterId, onChangeReciter, pla
         <h2>Surah Al-Mulk</h2>
       </div>
 
-      {reciters.length > 0 && (
-        <div className="reader-actions">
-          <label className="reciter-pick">
-            <span>Reciter</span>
-            <select value={reciterId || ""} onChange={(e) => onChangeReciter(e.target.value)}>
-              {reciters.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
-          </label>
-          <button className={"btn-royal" + (listening ? " on" : "")} onClick={listening ? player.stop : player.playSurah}>
-            {listening ? "Stop" : "Play surah"}
+      <div className="reader-actions">
+        {noteCount > 0 && (
+          <button className="export-btn" onClick={onExportNotes} title="Download all your notes as a text file">
+            Export notes ({noteCount})
           </button>
-        </div>
-      )}
+        )}
+        {reciters.length > 0 && (
+          <>
+            <label className="reciter-pick">
+              <span>Reciter</span>
+              <select value={reciterId || ""} onChange={(e) => onChangeReciter(e.target.value)}>
+                {reciters.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </label>
+            <button className={"btn-royal" + (listening ? " on" : "")} onClick={listening ? player.stop : player.playSurah}>
+              {listening ? "Stop" : "Play surah"}
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

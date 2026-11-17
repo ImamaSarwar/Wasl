@@ -1,5 +1,6 @@
 import AyahToolbar from "./AyahToolbar.jsx";
 import TafsirPanel from "./TafsirPanel.jsx";
+import NotesPanel from "./NotesPanel.jsx";
 
 // One ayah: [Listen] [Tafsir] controls (top right), Arabic words (hoverable/clickable),
 // transliteration, English translation, and the tafsir panel when opened.
@@ -21,15 +22,32 @@ export default function AyahLine({
   tafsirSources = [],
   tafsirOpen = false,
   onToggleTafsir,
+  notes,            // result of useNotes(); omit to switch notes off (e.g. in the drill-down list)
+  notesOpen = false,
+  onToggleNotes,
+  onOpenNotes,
 }) {
   const mine = player && player.ayah === ayah.ayah;
+  const hasNote = !!notes && notes.has(ayah.ayah);
   const active = mine && (player.status === "playing" || player.status === "loading" || player.status === "paused");
 
   return (
     <div className={"ayah" + (active ? " playing" : "")} id={highlightIds ? undefined : `ayah-${ayah.ayah}`}>
-      <div className="ayah-num"><span>{ayah.ayah}</span></div>
+      <div className="ayah-num">
+        <span>{ayah.ayah}</span>
+        {hasNote && (
+          <button
+            className="note-dot"
+            title="You have a note on this ayah. Click to read or edit it."
+            aria-label={`Open your note for ayah ${ayah.ayah}`}
+            onClick={onOpenNotes}
+          >
+            <span />
+          </button>
+        )}
+      </div>
       <div className="ayah-body">
-        {player && (hasAudio || tafsirSources.length > 0) && (
+        {player && (hasAudio || tafsirSources.length > 0 || notes) && (
           <>
             <AyahToolbar
               ayahNum={ayah.ayah}
@@ -38,6 +56,9 @@ export default function AyahLine({
               hasTafsir={tafsirSources.length > 0}
               tafsirOpen={tafsirOpen}
               onToggleTafsir={onToggleTafsir}
+              hasNotes={!!notes}
+              notesOpen={notesOpen}
+              onToggleNotes={onToggleNotes}
             />
             <div className={"ayah-progress" + (active ? " on" : "")} aria-hidden="true">
               <span style={{ width: `${mine ? player.progress * 100 : 0}%` }} />
@@ -74,6 +95,21 @@ export default function AyahLine({
           <p className="translit">{ayah.transliteration}</p>
         )}
         {showTranslation && <p className="translation">{ayah.translation}</p>}
+
+        {/* Notes come first, tafsir below, so your own words sit right under the ayah */}
+        {notes && notesOpen && (
+          <NotesPanel
+            ayahNum={ayah.ayah}
+            saved={notes.get(ayah.ayah)}
+            draft={notes.draftOf(ayah.ayah)}
+            storageOk={notes.storageOk}
+            saveError={notes.saveError}
+            onDraft={(text) => notes.setDraft(ayah.ayah, text)}
+            onSave={(text) => { notes.save(ayah.ayah, text); onToggleNotes(); }}
+            onDelete={() => notes.remove(ayah.ayah)}
+            onClose={onToggleNotes}
+          />
+        )}
 
         {tafsirOpen && tafsirSources.length > 0 && (
           <TafsirPanel ayahNum={ayah.ayah} sources={tafsirSources} onClose={onToggleTafsir} />
