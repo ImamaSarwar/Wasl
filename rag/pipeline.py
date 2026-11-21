@@ -21,7 +21,12 @@ from .resolve import resolve
 OUT_OF_SCOPE = re.compile(
     r"\b(fatwa|fatawa|halal|haram|makruh|permissible|impermissible|forbidden|"
     r"is it (?:a )?sin|rulings? (?:on|for|of|about)|am i allowed|"
-    r"will (?:i|they|he|she) go to (?:hell|heaven|jannah|jahannam))\b", re.I)
+    r"will (?:i|they|he|she) go to (?:hell|heaven|jannah|jahannam)|"
+    # personal / theological questions that are not about vocabulary
+    r"will (?:people|those|non-?believers|unbelievers|disbelievers|muslims|christians|jews)\b.{0,60}"
+    r"(?:punish|hell|heaven|paradise|saved|forgiven)|"
+    r"should i (?:be )?(?:afraid|fear|worry)|protect me|save me|every night|"
+    r"virtues? of (?:reading|reciting|this)|reward (?:for|of) (?:reading|reciting))", re.I)
 
 # The assistant covers Surah Al-Mulk only. A question that names another surah (or an ayah of
 # another surah) is refused up front: embedding search would otherwise return a loosely related
@@ -43,7 +48,12 @@ OTHER_SURAH = re.compile(
     rf"|(?:al|an|at|ash|as|ad|ar|az|adh|ath)-(?:{_OTHER_SURAHS})\b"
     rf"|(?!67:)\d{{1,3}}:\d{{1,3}})",
     re.I)
-TAFSIR = re.compile(r"\b(tafsir|tafseer|exegesis|interpretation of|what does .* really mean)\b", re.I)
+# a named verse or chapter of another surah is out of scope even without a surah number
+OTHER_SURAH = re.compile(OTHER_SURAH.pattern + r"|\b(?:ayat(?:ul|\s+al|\s+an)?[-\s]?(?:kursi|nur)|throne verse)\b", re.I)
+TAFSIR = re.compile(
+    r"\b(tafsir|tafseer|exegesis|interpretation of|what does .* really mean|hidden meaning|secret meaning|"
+    r"symbolic meaning|ibn kathir|ibn abbas|al-?tabari|tabari|qurtubi|jalalayn|sayyid qutb|maududi|"
+    r"what (?:do )?(?:the )?(?:scholars|commentators|mufassir\w*) (?:say|said|think))\b", re.I)
 
 REFUSAL_OTHER_SURAH = ("This assistant only covers Surah Al-Mulk (67). Please ask about a root, word "
                        "form or topic in that surah.")

@@ -1,0 +1,34 @@
+import pytest
+
+from rag.pipeline import answer
+from rag.resolve import resolve
+
+
+@pytest.mark.parametrize("q", [
+    "What did Ibn Kathir say about ayah 2?",
+    "Explain the hidden meaning of the seven heavens.",
+    "What do the scholars say about ayah 5?",
+    "Explain Ayat al-Kursi.",
+    "Will people who never heard of the warner still be punished?",
+    "Does reading this surah every night protect me from punishment?",
+    "Should I be afraid of the grave because of this surah?",
+])
+def test_interpretation_and_personal_questions_are_refused_before_any_search(q):
+    r = answer(q)
+    assert r["refused"] and r["evidence"] is None
+
+
+@pytest.mark.parametrize("q", [
+    "What does the root khalaq mean?",
+    "Where does the root of mawt (m-w-t) appear?",
+    "Which words relate to warning in this surah?",
+    "How does the surah use words for mercy?",
+    "What does the word nadhir mean?",
+])
+def test_normal_vocabulary_questions_are_still_answered(q):
+    assert not answer(q)["refused"]
+
+
+def test_the_word_works_is_not_a_concept():
+    assert resolve("Explain how machine learning works.") == {"direct": [], "concept": []}
+    assert resolve("Which verses talk about deeds?")["concept"]   # a real topic word still works

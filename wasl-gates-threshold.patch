@@ -1,0 +1,100 @@
+diff --git a/rag/concepts.json b/rag/concepts.json
+index 2a16517..41db31c 100644
+--- a/rag/concepts.json
++++ b/rag/concepts.json
+@@ -19,7 +19,7 @@
+   "heart|hearts|breast|breasts": ["قلب", "صدر"],
+   "guidance|guide|guided|misguidance|astray|error": ["هدي", "ضلل"],
+   "fear|fears|awe": ["خشي"],
+-  "deed|deeds|action|actions|work|works|best in deed": ["عمل", "حسن"],
++  "deed|deeds|action|actions|best in deed": ["عمل", "حسن"],
+   "truthful|truth|honest": ["صدق"],
+   "speak|speaking|spoken|speech|conceal|publicize": ["قول"],
+   "grateful|gratitude|thank|thankful": ["شكر"],
+diff --git a/rag/pipeline.py b/rag/pipeline.py
+index 93fd23b..e62acaa 100644
+--- a/rag/pipeline.py
++++ b/rag/pipeline.py
+@@ -21,7 +21,12 @@ from .resolve import resolve
+ OUT_OF_SCOPE = re.compile(
+     r"\b(fatwa|fatawa|halal|haram|makruh|permissible|impermissible|forbidden|"
+     r"is it (?:a )?sin|rulings? (?:on|for|of|about)|am i allowed|"
+-    r"will (?:i|they|he|she) go to (?:hell|heaven|jannah|jahannam))\b", re.I)
++    r"will (?:i|they|he|she) go to (?:hell|heaven|jannah|jahannam)|"
++    # personal / theological questions that are not about vocabulary
++    r"will (?:people|those|non-?believers|unbelievers|disbelievers|muslims|christians|jews)\b.{0,60}"
++    r"(?:punish|hell|heaven|paradise|saved|forgiven)|"
++    r"should i (?:be )?(?:afraid|fear|worry)|protect me|save me|every night|"
++    r"virtues? of (?:reading|reciting|this)|reward (?:for|of) (?:reading|reciting))", re.I)
+ 
+ # The assistant covers Surah Al-Mulk only. A question that names another surah (or an ayah of
+ # another surah) is refused up front: embedding search would otherwise return a loosely related
+@@ -43,7 +48,12 @@ OTHER_SURAH = re.compile(
+     rf"|(?:al|an|at|ash|as|ad|ar|az|adh|ath)-(?:{_OTHER_SURAHS})\b"
+     rf"|(?!67:)\d{{1,3}}:\d{{1,3}})",
+     re.I)
+-TAFSIR = re.compile(r"\b(tafsir|tafseer|exegesis|interpretation of|what does .* really mean)\b", re.I)
++# a named verse or chapter of another surah is out of scope even without a surah number
++OTHER_SURAH = re.compile(OTHER_SURAH.pattern + r"|\b(?:ayat(?:ul|\s+al|\s+an)?[-\s]?(?:kursi|nur)|throne verse)\b", re.I)
++TAFSIR = re.compile(
++    r"\b(tafsir|tafseer|exegesis|interpretation of|what does .* really mean|hidden meaning|secret meaning|"
++    r"symbolic meaning|ibn kathir|ibn abbas|al-?tabari|tabari|qurtubi|jalalayn|sayyid qutb|maududi|"
++    r"what (?:do )?(?:the )?(?:scholars|commentators|mufassir\w*) (?:say|said|think))\b", re.I)
+ 
+ REFUSAL_OTHER_SURAH = ("This assistant only covers Surah Al-Mulk (67). Please ask about a root, word "
+                        "form or topic in that surah.")
+diff --git a/rag/retrieve.py b/rag/retrieve.py
+index 0dc286b..74332a7 100644
+--- a/rag/retrieve.py
++++ b/rag/retrieve.py
+@@ -18,7 +18,9 @@ from backend import queries
+ # Minimum best-ayah score to answer instead of refusing. TUNE these with the eval sweep.
+ THRESHOLDS = {
+     "tfidf": 0.18,   # lowest value that refuses every no_match dev question; only 6 dev questions, so weak evidence
+-    "minilm": 0.24,   # middle of the 0.20-0.28 plateau on the dev sweep (6 questions - re-tune with more)
++    "minilm": 0.38,   # plateau 0.36-0.42 on the dev sweep (29 semantic questions: 12 answerable, 17 must refuse).
++                      # At 0.24 only 10/17 refusals; at 0.38 15/17 for the loss of one answerable question.
++                      # Tuned on dev: re-check on the held-out test questions.
+ }
+ TOP_K = 3
+ 
+diff --git a/tests/test_gates.py b/tests/test_gates.py
+new file mode 100644
+index 0000000..1d3af86
+--- /dev/null
++++ b/tests/test_gates.py
+@@ -0,0 +1,34 @@
++import pytest
++
++from rag.pipeline import answer
++from rag.resolve import resolve
++
++
++@pytest.mark.parametrize("q", [
++    "What did Ibn Kathir say about ayah 2?",
++    "Explain the hidden meaning of the seven heavens.",
++    "What do the scholars say about ayah 5?",
++    "Explain Ayat al-Kursi.",
++    "Will people who never heard of the warner still be punished?",
++    "Does reading this surah every night protect me from punishment?",
++    "Should I be afraid of the grave because of this surah?",
++])
++def test_interpretation_and_personal_questions_are_refused_before_any_search(q):
++    r = answer(q)
++    assert r["refused"] and r["evidence"] is None
++
++
++@pytest.mark.parametrize("q", [
++    "What does the root khalaq mean?",
++    "Where does the root of mawt (m-w-t) appear?",
++    "Which words relate to warning in this surah?",
++    "How does the surah use words for mercy?",
++    "What does the word nadhir mean?",
++])
++def test_normal_vocabulary_questions_are_still_answered(q):
++    assert not answer(q)["refused"]
++
++
++def test_the_word_works_is_not_a_concept():
++    assert resolve("Explain how machine learning works.") == {"direct": [], "concept": []}
++    assert resolve("Which verses talk about deeds?")["concept"]   # a real topic word still works

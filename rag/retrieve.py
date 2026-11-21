@@ -18,7 +18,9 @@ from backend import queries
 # Minimum best-ayah score to answer instead of refusing. TUNE these with the eval sweep.
 THRESHOLDS = {
     "tfidf": 0.18,   # lowest value that refuses every no_match dev question; only 6 dev questions, so weak evidence
-    "minilm": 0.24,   # middle of the 0.20-0.28 plateau on the dev sweep (6 questions - re-tune with more)
+    "minilm": 0.38,   # plateau 0.36-0.42 on the dev sweep (29 semantic questions: 12 answerable, 17 must refuse).
+                      # At 0.24 only 10/17 refusals; at 0.38 15/17 for the loss of one answerable question.
+                      # Tuned on dev: re-check on the held-out test questions.
 }
 TOP_K = 3
 
