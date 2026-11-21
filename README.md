@@ -1,4 +1,4 @@
-# Wasl — Quran Root Explorer (Surah Al-Mulk)
+# Wasl - Quran Root Explorer (Surah Al-Mulk)
 
 **Wasl** is a root-based reader and AI-assisted study tool for **Surah Al-Mulk** (Qur'an 67)[cite: 52]. Hover over any word to see its root, plain-English grammar, and meaning, or click a rooted word to open its root family tree, verse occurrences, recitation with word highlighting, tafsir, personal notes, and the verified learning assistant[cite: 52].
 
@@ -116,7 +116,7 @@ Open **`http://localhost:5173`** in your browser.
 
 ---
 
-## 4. What You Can Use in the Demo
+## 4. Features Currently Developed
 
 * **Surah Reader:** Read all 30 ayahs of Surah Al-Mulk with Arabic text, English translation, and transliteration[cite: 52].
 * **Hover Word Cards:** Hover over any word to see its meaning, root letters, plain-English grammar, and attested past/present forms (particles show `"No root"`)[cite: 52].
