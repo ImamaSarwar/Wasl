@@ -1,0 +1,41 @@
+diff --git a/rag/verify.py b/rag/verify.py
+index e7122b4..44be418 100644
+--- a/rag/verify.py
++++ b/rag/verify.py
+@@ -30,6 +30,12 @@ def _norm(s):
+     return re.sub(r"\s+", " ", re.sub(r"[.,;:!?]+$", "", s.strip().lower()))
+ 
+ 
++def _gloss_norm(s):
++    """Compare glosses ignoring case, wrapping quotes and the dataset's (the) parentheses."""
++    s = re.sub(r'["\u201c\u201d()]', "", s or "")
++    return _norm(s)
++
++
+ def _lemma_ok(claimed, hits):
+     """
+     A claimed lemma must be a lemma of one of the root's words in that ayah.
+@@ -124,7 +130,7 @@ def check(raw, intent, evidence):
+         lemma, gloss = c.get("lemma"), c.get("gloss")
+         if lemma and not _lemma_ok(lemma, hits):
+             errors.append(f"claim {i}: root {root} in ayah {n} has no form with lemma {lemma}")
+-        if gloss and not any(_norm(gloss) == _norm(h.get("gloss") or "") for h in hits):
++        if gloss and not any(_gloss_norm(gloss) == _gloss_norm(h.get("gloss") or "") for h in hits):
+             errors.append(f'claim {i}: no word of root {root} in ayah {n} has the meaning "{gloss}"')
+ 
+     texts = _norm(" | ".join(idx["texts"]))
+diff --git a/tests/test_llm.py b/tests/test_llm.py
+index 55230e7..ab76de9 100644
+--- a/tests/test_llm.py
++++ b/tests/test_llm.py
+@@ -306,3 +306,10 @@ class TestPromptFormatting(unittest.TestCase):
+ 
+ if __name__ == "__main__":
+     unittest.main()
++
++
++def test_gloss_claim_tolerates_wrapping_quotes_and_parentheses():
++    from rag import verify
++    assert verify._gloss_norm('"the birds"') == verify._gloss_norm("the birds")
++    assert verify._gloss_norm("(the) creation") == verify._gloss_norm("the creation")
++    assert verify._gloss_norm("a warner") != verify._gloss_norm("warners")

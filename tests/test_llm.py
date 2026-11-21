@@ -306,3 +306,10 @@ class TestPromptFormatting(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_gloss_claim_tolerates_wrapping_quotes_and_parentheses():
+    from rag import verify
+    assert verify._gloss_norm('"the birds"') == verify._gloss_norm("the birds")
+    assert verify._gloss_norm("(the) creation") == verify._gloss_norm("the creation")
+    assert verify._gloss_norm("a warner") != verify._gloss_norm("warners")

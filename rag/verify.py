@@ -30,6 +30,12 @@ def _norm(s):
     return re.sub(r"\s+", " ", re.sub(r"[.,;:!?]+$", "", s.strip().lower()))
 
 
+def _gloss_norm(s):
+    """Compare glosses ignoring case, wrapping quotes and the dataset's (the) parentheses."""
+    s = re.sub(r'["\u201c\u201d()]', "", s or "")
+    return _norm(s)
+
+
 def _lemma_ok(claimed, hits):
     """
     A claimed lemma must be a lemma of one of the root's words in that ayah.
@@ -124,7 +130,7 @@ def check(raw, intent, evidence):
         lemma, gloss = c.get("lemma"), c.get("gloss")
         if lemma and not _lemma_ok(lemma, hits):
             errors.append(f"claim {i}: root {root} in ayah {n} has no form with lemma {lemma}")
-        if gloss and not any(_norm(gloss) == _norm(h.get("gloss") or "") for h in hits):
+        if gloss and not any(_gloss_norm(gloss) == _gloss_norm(h.get("gloss") or "") for h in hits):
             errors.append(f'claim {i}: no word of root {root} in ayah {n} has the meaning "{gloss}"')
 
     texts = _norm(" | ".join(idx["texts"]))
