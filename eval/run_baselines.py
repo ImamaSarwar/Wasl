@@ -149,6 +149,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--retriever", default=None)
     ap.add_argument("--with-generated", action="store_true")
+    ap.add_argument("--generated-sample", type=int, default=0, metavar="N",
+                    help="with --with-generated: use only N of the generated questions (evenly spread), "
+                         "to save LLM quota")
     ap.add_argument("--systems", nargs="*", default=ALL_SYSTEMS, choices=ALL_SYSTEMS)
     ap.add_argument("--no-llm", action="store_true", help="skip the systems that call the LLM")
     ap.add_argument("--delay", type=float, default=3.0)
@@ -157,6 +160,10 @@ def main():
     systems = [s for s in a.systems if not (a.no_llm and s in USES_LLM)]
     files = ("questions.jsonl", "generated.jsonl") if a.with_generated else ("questions.jsonl",)
     qs = load("all", files)
+    if a.generated_sample:
+        gen = [q for q in qs if q["split"] == "gen"]
+        keep = {q["id"] for q in gen[::max(1, len(gen) // a.generated_sample)][:a.generated_sample]}
+        qs = [q for q in qs if q["split"] != "gen" or q["id"] in keep]
     ctx = {"ret": retrieve.get_retriever(a.retriever), "cfg": llm.get_config()}
     if any(s in USES_LLM for s in systems) and ctx["cfg"] is None:
         sys.exit("The LLM is not configured (.env). Use --no-llm for the offline systems.")

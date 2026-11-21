@@ -94,3 +94,14 @@ def test_an_llm_refusal_keeps_its_reason():
     cfg = llm.Config("gemini", "k", "m")
     r = pipeline.answer("What does the root khalaq mean?", use_llm=True, llm_config=cfg, llm_transport=Fake())
     assert r["refused"] and r["generated_by"] == "llm" and r["llm_reason"] == "no relevant ayah"
+
+
+def test_generated_sample_is_even_and_deterministic(monkeypatch, capsys):
+    monkeypatch.setattr(sys, "argv", ["run_baselines.py", "--no-llm", "--with-generated",
+                                      "--generated-sample", "25", "--systems", "exact_only"])
+    rb.main()
+    out = capsys.readouterr().out
+    assert "questions:" in out
+    n = int(out.split("questions:")[0].split()[-1])
+    hand = sum(1 for l in open(ROOT / "eval" / "questions.jsonl", encoding="utf-8") if l.strip())
+    assert n == hand + 25

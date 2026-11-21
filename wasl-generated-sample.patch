@@ -1,0 +1,44 @@
+diff --git a/eval/run_baselines.py b/eval/run_baselines.py
+index 46fb9be..498647c 100644
+--- a/eval/run_baselines.py
++++ b/eval/run_baselines.py
+@@ -149,6 +149,9 @@ def main():
+     ap = argparse.ArgumentParser()
+     ap.add_argument("--retriever", default=None)
+     ap.add_argument("--with-generated", action="store_true")
++    ap.add_argument("--generated-sample", type=int, default=0, metavar="N",
++                    help="with --with-generated: use only N of the generated questions (evenly spread), "
++                         "to save LLM quota")
+     ap.add_argument("--systems", nargs="*", default=ALL_SYSTEMS, choices=ALL_SYSTEMS)
+     ap.add_argument("--no-llm", action="store_true", help="skip the systems that call the LLM")
+     ap.add_argument("--delay", type=float, default=3.0)
+@@ -157,6 +160,10 @@ def main():
+     systems = [s for s in a.systems if not (a.no_llm and s in USES_LLM)]
+     files = ("questions.jsonl", "generated.jsonl") if a.with_generated else ("questions.jsonl",)
+     qs = load("all", files)
++    if a.generated_sample:
++        gen = [q for q in qs if q["split"] == "gen"]
++        keep = {q["id"] for q in gen[::max(1, len(gen) // a.generated_sample)][:a.generated_sample]}
++        qs = [q for q in qs if q["split"] != "gen" or q["id"] in keep]
+     ctx = {"ret": retrieve.get_retriever(a.retriever), "cfg": llm.get_config()}
+     if any(s in USES_LLM for s in systems) and ctx["cfg"] is None:
+         sys.exit("The LLM is not configured (.env). Use --no-llm for the offline systems.")
+diff --git a/tests/test_baselines.py b/tests/test_baselines.py
+index 0248d08..b081324 100644
+--- a/tests/test_baselines.py
++++ b/tests/test_baselines.py
+@@ -94,3 +94,14 @@ def test_an_llm_refusal_keeps_its_reason():
+     cfg = llm.Config("gemini", "k", "m")
+     r = pipeline.answer("What does the root khalaq mean?", use_llm=True, llm_config=cfg, llm_transport=Fake())
+     assert r["refused"] and r["generated_by"] == "llm" and r["llm_reason"] == "no relevant ayah"
++
++
++def test_generated_sample_is_even_and_deterministic(monkeypatch, capsys):
++    monkeypatch.setattr(sys, "argv", ["run_baselines.py", "--no-llm", "--with-generated",
++                                      "--generated-sample", "25", "--systems", "exact_only"])
++    rb.main()
++    out = capsys.readouterr().out
++    assert "questions:" in out
++    n = int(out.split("questions:")[0].split()[-1])
++    hand = sum(1 for l in open(ROOT / "eval" / "questions.jsonl", encoding="utf-8") if l.strip())
++    assert n == hand + 25
