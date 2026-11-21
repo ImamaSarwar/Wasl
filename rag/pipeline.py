@@ -156,7 +156,7 @@ def _with_llm(res, question, use_llm, config=None, transport=None):
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
             raw = generate.ask(question, res["intent"], res["evidence"], previous_errors=errors,
-                               config=cfg, transport=transport)
+                               matched=res.get("matched"), config=cfg, transport=transport)
         except llm.LLMError as e:
             return {**res, "generated_by": "template", "llm_error": str(e), "attempts": attempt}
         data, errors = verify.check(raw, res["intent"], res["evidence"])
@@ -167,7 +167,7 @@ def _with_llm(res, question, use_llm, config=None, transport=None):
         return {**res, "generated_by": "template", "verification_errors": errors, "attempts": MAX_ATTEMPTS}
     if data["refuse"]:
         return {**_refuse(REFUSAL_UNSUPPORTED, res["intent"], res.get("roots", ())),
-                "generated_by": "llm", "attempts": attempt}
+                "generated_by": "llm", "attempts": attempt, "llm_reason": data.get("reason")}
     return {**res, "answer": data["answer"].strip() + "\n\nEvidence:\n" + template,
             "citations": verify.cited_ayahs(data), "generated_by": "llm", "attempts": attempt,
             "claims": data.get("claims") or []}

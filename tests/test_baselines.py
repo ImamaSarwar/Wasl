@@ -73,3 +73,24 @@ def test_prompt_only_survives_an_llm_failure(monkeypatch):
     monkeypatch.setattr(llm, "generate_json", boom)
     out = rb.sys_prompt_only({"question": "x"}, {"cfg": object()})
     assert out["error"] and out["cited"] == set()
+
+
+def test_prompt_tells_the_model_how_the_question_was_matched():
+    from rag import generate
+    ev = [{"root": "شيأ", "total": 3, "forms": [], "ayahs": []}]
+    matched = [{"root": "شيأ", "via": "lemma", "matched": "shaa"}]
+    text = generate.build_user_prompt("Which root does shaa come from?", "single_root", ev, matched=matched)
+    assert 'MATCHED: "shaa" -> root شيأ' in text and "word form" in text
+    assert "MATCHED" not in generate.build_user_prompt("q", "single_root", ev)
+
+
+def test_an_llm_refusal_keeps_its_reason():
+    from rag import pipeline
+
+    class Fake:
+        def __call__(self, url, headers, body):
+            reply = {"refuse": True, "answer": "", "claims": [], "reason": "no relevant ayah"}
+            return 200, json.dumps({"candidates": [{"content": {"parts": [{"text": json.dumps(reply)}]}}]})
+    cfg = llm.Config("gemini", "k", "m")
+    r = pipeline.answer("What does the root khalaq mean?", use_llm=True, llm_config=cfg, llm_transport=Fake())
+    assert r["refused"] and r["generated_by"] == "llm" and r["llm_reason"] == "no relevant ayah"

@@ -96,7 +96,8 @@ def _pipeline(use_llm):
         r = answer(q["question"], retriever=ctx["ret"], use_llm=use_llm)
         err = r.get("llm_error")
         return {"refused": r["refused"], "cited": set(r["citations"]), "text": r["answer"], "error": err,
-                "generated_by": r.get("generated_by")}
+                "generated_by": r.get("generated_by"), "reason": r.get("llm_reason"),
+                "verification_errors": r.get("verification_errors")}
     return run
 
 
@@ -175,7 +176,8 @@ def main():
             rows.append(score(q, out))
             raw.setdefault(name, []).append({"id": q["id"], "type": q["type"], "refused": out["refused"],
                                              "cited": sorted(out["cited"]), "generated_by": out.get("generated_by"),
-                                             "error": out.get("error")})
+                                             "error": out.get("error"), "reason": out.get("reason"),
+                                             "verification_errors": out.get("verification_errors")})
             if name in USES_LLM:
                 time.sleep(a.delay)
             if i % 20 == 0:
@@ -190,6 +192,16 @@ def main():
     print("-" * 96)
     for name, (rows, errors) in results.items():
         print(report(name, rows) + (f"   [{errors} provider errors]" if errors else ""))
+    if "hybrid_llm" in raw:
+        text = {q["id"]: q["question"] for q in qs}
+        bad = [x for x in raw["hybrid_llm"]
+               if (x["refused"] and x["type"] in ROOT_TYPES | {"semantic"}) or x["generated_by"] == "template"]
+        if bad:
+            print("\nhybrid_llm: answerable questions that were refused or fell back to the database answer:")
+            for x in bad:
+                why = x.get("reason") or x.get("error") or "; ".join(x.get("verification_errors") or []) or "?"
+                kind = "refused " if x["refused"] else "fallback"
+                print(f"  [{kind}] {x['id']} {text[x['id']]}\n             {why[:200]}")
     out = ROOT / "eval" / "results"
     out.mkdir(exist_ok=True)
     (out / "baselines.json").write_text(json.dumps(raw, ensure_ascii=False, indent=1), encoding="utf-8")

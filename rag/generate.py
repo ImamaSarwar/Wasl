@@ -14,7 +14,7 @@ from .resolve import ALIASES
 SYSTEM = """You answer questions about the vocabulary of Surah Al-Mulk (Quran 67) for a Quranic Arabic learning tool.
 
 RULES
-1. Use ONLY the EVIDENCE block in the user message. Never use outside knowledge about the Quran, tafsir, history, or Arabic grammar. If the evidence does not contain the answer, refuse.
+1. Use ONLY the EVIDENCE block in the user message. Never use outside knowledge about the Quran, tafsir, history, or Arabic grammar. If the evidence contains something relevant to the question (even only part of the answer), answer from it and say what it covers. Refuse only when the evidence contains nothing relevant, or the question asks for rulings, theology or tafsir.
 2. Cite the ayah for every statement about how a word is used, written exactly like [67:3]. Only cite ayahs that appear in the evidence.
 3. Describe a word's meaning only with the 'meaning' glosses or the ayah translations in the evidence. When you quote a gloss or a translation, copy it exactly, inside double quotes.
 4. Never give rulings (halal/haram), theology, personal interpretation, or tafsir. If the question asks for them, refuse.
@@ -26,7 +26,8 @@ Reply with JSON only, in this shape:
  "answer": "text with [67:N] citations",
  "claims": [{"ayah": 3, "root": "خلق", "lemma": "خَلْق", "gloss": "(the) creation"}]}
 Each claim describes one word from the evidence: ayah, root and lemma exactly as listed there, and gloss exactly as listed (or null). For questions with no root in the evidence, claims may be [] .
-To refuse, reply {"refuse": true, "answer": "", "claims": []}."""
+To refuse, reply {"refuse": true, "answer": "", "claims": [], "reason": "one short sentence: what the evidence lacks"}.
+If a MATCHED line says a word in the question was matched to a root, the evidence is about that root: use it."""
 
 
 def _label(root):
@@ -61,18 +62,28 @@ def format_evidence(intent, evidence):
     return "\n".join(lines)
 
 
-def build_user_prompt(question, intent, evidence, previous_errors=None):
-    parts = [f"QUESTION: {question}", f"QUESTION TYPE: {intent}", "",
-             "EVIDENCE (the only facts you may use):", format_evidence(intent, evidence)]
+def _matched_line(matched):
+    """'MATCHED: "shaa" -> root شيأ (word form)' - how the resolver read the question (not model output)."""
+    via = {"arabic": "Arabic word", "latin": "root spelling", "lemma": "word form", "concept": "topic word"}
+    items = [f'"{m["matched"]}" -> root {_label(m["root"])} ({via.get(m["via"], m["via"])})' for m in matched or []]
+    return ("MATCHED: " + "; ".join(items)) if items else None
+
+
+def build_user_prompt(question, intent, evidence, previous_errors=None, matched=None):
+    parts = [f"QUESTION: {question}", f"QUESTION TYPE: {intent}"]
+    if _matched_line(matched):
+        parts.append(_matched_line(matched))
+    parts += ["", "EVIDENCE (the only facts you may use):", format_evidence(intent, evidence)]
     if previous_errors:
         parts += ["", "YOUR PREVIOUS ANSWER FAILED AUTOMATIC CHECKS. Fix every problem and answer again:"]
         parts += [f"- {e}" for e in previous_errors]
     return "\n".join(parts)
 
 
-def ask(question, intent, evidence, previous_errors=None, **llm_kwargs):
+def ask(question, intent, evidence, previous_errors=None, matched=None, **llm_kwargs):
     """Returns the model's raw reply text (JSON as a string). Raises llm.LLMError on failure."""
-    return llm.generate_json(SYSTEM, build_user_prompt(question, intent, evidence, previous_errors), **llm_kwargs)
+    return llm.generate_json(SYSTEM, build_user_prompt(question, intent, evidence, previous_errors, matched),
+                             **llm_kwargs)
 
 
 def parse(raw):

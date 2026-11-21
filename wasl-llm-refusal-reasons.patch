@@ -1,0 +1,149 @@
+diff --git a/eval/run_baselines.py b/eval/run_baselines.py
+index 84012bc..46fb9be 100644
+--- a/eval/run_baselines.py
++++ b/eval/run_baselines.py
+@@ -96,7 +96,8 @@ def _pipeline(use_llm):
+         r = answer(q["question"], retriever=ctx["ret"], use_llm=use_llm)
+         err = r.get("llm_error")
+         return {"refused": r["refused"], "cited": set(r["citations"]), "text": r["answer"], "error": err,
+-                "generated_by": r.get("generated_by")}
++                "generated_by": r.get("generated_by"), "reason": r.get("llm_reason"),
++                "verification_errors": r.get("verification_errors")}
+     return run
+ 
+ 
+@@ -175,7 +176,8 @@ def main():
+             rows.append(score(q, out))
+             raw.setdefault(name, []).append({"id": q["id"], "type": q["type"], "refused": out["refused"],
+                                              "cited": sorted(out["cited"]), "generated_by": out.get("generated_by"),
+-                                             "error": out.get("error")})
++                                             "error": out.get("error"), "reason": out.get("reason"),
++                                             "verification_errors": out.get("verification_errors")})
+             if name in USES_LLM:
+                 time.sleep(a.delay)
+             if i % 20 == 0:
+@@ -190,6 +192,16 @@ def main():
+     print("-" * 96)
+     for name, (rows, errors) in results.items():
+         print(report(name, rows) + (f"   [{errors} provider errors]" if errors else ""))
++    if "hybrid_llm" in raw:
++        text = {q["id"]: q["question"] for q in qs}
++        bad = [x for x in raw["hybrid_llm"]
++               if (x["refused"] and x["type"] in ROOT_TYPES | {"semantic"}) or x["generated_by"] == "template"]
++        if bad:
++            print("\nhybrid_llm: answerable questions that were refused or fell back to the database answer:")
++            for x in bad:
++                why = x.get("reason") or x.get("error") or "; ".join(x.get("verification_errors") or []) or "?"
++                kind = "refused " if x["refused"] else "fallback"
++                print(f"  [{kind}] {x['id']} {text[x['id']]}\n             {why[:200]}")
+     out = ROOT / "eval" / "results"
+     out.mkdir(exist_ok=True)
+     (out / "baselines.json").write_text(json.dumps(raw, ensure_ascii=False, indent=1), encoding="utf-8")
+diff --git a/rag/generate.py b/rag/generate.py
+index 534f47b..476b475 100644
+--- a/rag/generate.py
++++ b/rag/generate.py
+@@ -14,7 +14,7 @@ from .resolve import ALIASES
+ SYSTEM = """You answer questions about the vocabulary of Surah Al-Mulk (Quran 67) for a Quranic Arabic learning tool.
+ 
+ RULES
+-1. Use ONLY the EVIDENCE block in the user message. Never use outside knowledge about the Quran, tafsir, history, or Arabic grammar. If the evidence does not contain the answer, refuse.
++1. Use ONLY the EVIDENCE block in the user message. Never use outside knowledge about the Quran, tafsir, history, or Arabic grammar. If the evidence contains something relevant to the question (even only part of the answer), answer from it and say what it covers. Refuse only when the evidence contains nothing relevant, or the question asks for rulings, theology or tafsir.
+ 2. Cite the ayah for every statement about how a word is used, written exactly like [67:3]. Only cite ayahs that appear in the evidence.
+ 3. Describe a word's meaning only with the 'meaning' glosses or the ayah translations in the evidence. When you quote a gloss or a translation, copy it exactly, inside double quotes.
+ 4. Never give rulings (halal/haram), theology, personal interpretation, or tafsir. If the question asks for them, refuse.
+@@ -26,7 +26,8 @@ Reply with JSON only, in this shape:
+  "answer": "text with [67:N] citations",
+  "claims": [{"ayah": 3, "root": "خلق", "lemma": "خَلْق", "gloss": "(the) creation"}]}
+ Each claim describes one word from the evidence: ayah, root and lemma exactly as listed there, and gloss exactly as listed (or null). For questions with no root in the evidence, claims may be [] .
+-To refuse, reply {"refuse": true, "answer": "", "claims": []}."""
++To refuse, reply {"refuse": true, "answer": "", "claims": [], "reason": "one short sentence: what the evidence lacks"}.
++If a MATCHED line says a word in the question was matched to a root, the evidence is about that root: use it."""
+ 
+ 
+ def _label(root):
+@@ -61,18 +62,28 @@ def format_evidence(intent, evidence):
+     return "\n".join(lines)
+ 
+ 
+-def build_user_prompt(question, intent, evidence, previous_errors=None):
+-    parts = [f"QUESTION: {question}", f"QUESTION TYPE: {intent}", "",
+-             "EVIDENCE (the only facts you may use):", format_evidence(intent, evidence)]
++def _matched_line(matched):
++    """'MATCHED: "shaa" -> root شيأ (word form)' - how the resolver read the question (not model output)."""
++    via = {"arabic": "Arabic word", "latin": "root spelling", "lemma": "word form", "concept": "topic word"}
++    items = [f'"{m["matched"]}" -> root {_label(m["root"])} ({via.get(m["via"], m["via"])})' for m in matched or []]
++    return ("MATCHED: " + "; ".join(items)) if items else None
++
++
++def build_user_prompt(question, intent, evidence, previous_errors=None, matched=None):
++    parts = [f"QUESTION: {question}", f"QUESTION TYPE: {intent}"]
++    if _matched_line(matched):
++        parts.append(_matched_line(matched))
++    parts += ["", "EVIDENCE (the only facts you may use):", format_evidence(intent, evidence)]
+     if previous_errors:
+         parts += ["", "YOUR PREVIOUS ANSWER FAILED AUTOMATIC CHECKS. Fix every problem and answer again:"]
+         parts += [f"- {e}" for e in previous_errors]
+     return "\n".join(parts)
+ 
+ 
+-def ask(question, intent, evidence, previous_errors=None, **llm_kwargs):
++def ask(question, intent, evidence, previous_errors=None, matched=None, **llm_kwargs):
+     """Returns the model's raw reply text (JSON as a string). Raises llm.LLMError on failure."""
+-    return llm.generate_json(SYSTEM, build_user_prompt(question, intent, evidence, previous_errors), **llm_kwargs)
++    return llm.generate_json(SYSTEM, build_user_prompt(question, intent, evidence, previous_errors, matched),
++                             **llm_kwargs)
+ 
+ 
+ def parse(raw):
+diff --git a/rag/pipeline.py b/rag/pipeline.py
+index 4192332..93fd23b 100644
+--- a/rag/pipeline.py
++++ b/rag/pipeline.py
+@@ -156,7 +156,7 @@ def _with_llm(res, question, use_llm, config=None, transport=None):
+     for attempt in range(1, MAX_ATTEMPTS + 1):
+         try:
+             raw = generate.ask(question, res["intent"], res["evidence"], previous_errors=errors,
+-                               config=cfg, transport=transport)
++                               matched=res.get("matched"), config=cfg, transport=transport)
+         except llm.LLMError as e:
+             return {**res, "generated_by": "template", "llm_error": str(e), "attempts": attempt}
+         data, errors = verify.check(raw, res["intent"], res["evidence"])
+@@ -167,7 +167,7 @@ def _with_llm(res, question, use_llm, config=None, transport=None):
+         return {**res, "generated_by": "template", "verification_errors": errors, "attempts": MAX_ATTEMPTS}
+     if data["refuse"]:
+         return {**_refuse(REFUSAL_UNSUPPORTED, res["intent"], res.get("roots", ())),
+-                "generated_by": "llm", "attempts": attempt}
++                "generated_by": "llm", "attempts": attempt, "llm_reason": data.get("reason")}
+     return {**res, "answer": data["answer"].strip() + "\n\nEvidence:\n" + template,
+             "citations": verify.cited_ayahs(data), "generated_by": "llm", "attempts": attempt,
+             "claims": data.get("claims") or []}
+diff --git a/tests/test_baselines.py b/tests/test_baselines.py
+index 8b59a6e..0248d08 100644
+--- a/tests/test_baselines.py
++++ b/tests/test_baselines.py
+@@ -73,3 +73,24 @@ def test_prompt_only_survives_an_llm_failure(monkeypatch):
+     monkeypatch.setattr(llm, "generate_json", boom)
+     out = rb.sys_prompt_only({"question": "x"}, {"cfg": object()})
+     assert out["error"] and out["cited"] == set()
++
++
++def test_prompt_tells_the_model_how_the_question_was_matched():
++    from rag import generate
++    ev = [{"root": "شيأ", "total": 3, "forms": [], "ayahs": []}]
++    matched = [{"root": "شيأ", "via": "lemma", "matched": "shaa"}]
++    text = generate.build_user_prompt("Which root does shaa come from?", "single_root", ev, matched=matched)
++    assert 'MATCHED: "shaa" -> root شيأ' in text and "word form" in text
++    assert "MATCHED" not in generate.build_user_prompt("q", "single_root", ev)
++
++
++def test_an_llm_refusal_keeps_its_reason():
++    from rag import pipeline
++
++    class Fake:
++        def __call__(self, url, headers, body):
++            reply = {"refuse": True, "answer": "", "claims": [], "reason": "no relevant ayah"}
++            return 200, json.dumps({"candidates": [{"content": {"parts": [{"text": json.dumps(reply)}]}}]})
++    cfg = llm.Config("gemini", "k", "m")
++    r = pipeline.answer("What does the root khalaq mean?", use_llm=True, llm_config=cfg, llm_transport=Fake())
++    assert r["refused"] and r["generated_by"] == "llm" and r["llm_reason"] == "no relevant ayah"
