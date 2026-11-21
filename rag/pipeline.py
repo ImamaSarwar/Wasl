@@ -9,7 +9,7 @@ Response: {answer, citations [ayah numbers], refused, verification_errors, inten
 """
 import re
 
-from . import retrieve
+from . import generate, llm, retrieve, verify
 from .evidence import ayah_evidence, compare_evidence, root_evidence
 from .resolve import resolve
 
@@ -66,9 +66,15 @@ def _root_label(root):
     return f"{root} ({lat})" if lat else root
 
 
+def _gloss_text(f):
+    """'created' / '(the) creation' - the word-by-word meaning(s) of one form, at most three."""
+    g = f.get("glosses") or []
+    return " " + ", ".join(f'"{x}"' for x in g[:3]) if g else ""
+
+
 def _summarise(ev):
     forms = "; ".join(
-        f"{f['lemma']} ({_times(f['count'])}, ayah{'s' if len(f['ayahs']) > 1 else ''} "
+        f"{f['lemma']}{_gloss_text(f)} ({_times(f['count'])}, ayah{'s' if len(f['ayahs']) > 1 else ''} "
         f"{', '.join(map(str, f['ayahs']))})" for f in ev["forms"])
     n = len(ev["forms"])
     return (f"The root {_root_label(ev['root'])} occurs {_times(ev['total'])} in Surah Al-Mulk, "
@@ -83,8 +89,17 @@ def _ayah_lines(ayahs, limit=6):
     return "\n".join(lines)
 
 
+MEANING = re.compile(r"\b(mean|means|meaning|meanings|define|definition|gloss)\b", re.I)
+MEANING_NOTE = ("(Meanings are the word-by-word glosses from the dataset: they show how each form is "
+                "rendered in this surah, not a dictionary definition.)")
+
+
 def _write_answer(intent, evs, extra=None):
-    """Template answer. Replace/augment with LLM generation later; keep the same inputs."""
+    """Template answer, built only from database facts. Also the safe fallback for LLM answers."""
+    if intent == "meaning":
+        ev = evs[0]
+        allay = sorted({x["ayah"]: x for x in ev["ayahs"]}.items())
+        return (f"{_summarise(ev)}\n{MEANING_NOTE}\n\n" + _ayah_lines([v for _, v in allay]))
     if intent == "compare":
         a, b = evs
         text = f"{_summarise(a)}\n{_summarise(b)}\n"
@@ -119,7 +134,46 @@ def _semantic(q, retriever=None, threshold=None):
             "evidence": ev}
 
 
-def answer(question, retriever=None, threshold=None):
+REFUSAL_UNSUPPORTED = ("I can't answer that from the evidence I retrieved for Surah Al-Mulk. "
+                       "Try naming a root or word form, or ask about a topic in the surah.")
+MAX_ATTEMPTS = 2   # first try + one regeneration with the verifier's complaints
+
+
+def _with_llm(res, question, use_llm, config=None, transport=None):
+    """
+    Optional LLM stage. `res` is a finished database-only answer (the safe fallback).
+    The model rewrites it into a short grounded explanation; rag/verify.py checks every claim against
+    the evidence. If the check fails twice, or the LLM is unavailable, `res` is returned unchanged.
+    Adds: generated_by ("llm" | "template"), attempts, llm_error.
+    """
+    if not use_llm or res["refused"]:
+        return res
+    cfg = config or llm.get_config()
+    if cfg is None:
+        return {**res, "generated_by": "template", "llm_error": "the LLM is not configured (.env)"}
+
+    template, errors, data = res["answer"], None, None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            raw = generate.ask(question, res["intent"], res["evidence"], previous_errors=errors,
+                               config=cfg, transport=transport)
+        except llm.LLMError as e:
+            return {**res, "generated_by": "template", "llm_error": str(e), "attempts": attempt}
+        data, errors = verify.check(raw, res["intent"], res["evidence"])
+        if not errors:
+            break
+    if errors:
+        # never show an unverified model answer: fall back to the database-only answer
+        return {**res, "generated_by": "template", "verification_errors": errors, "attempts": MAX_ATTEMPTS}
+    if data["refuse"]:
+        return {**_refuse(REFUSAL_UNSUPPORTED, res["intent"], res.get("roots", ())),
+                "generated_by": "llm", "attempts": attempt}
+    return {**res, "answer": data["answer"].strip() + "\n\nEvidence:\n" + template,
+            "citations": verify.cited_ayahs(data), "generated_by": "llm", "attempts": attempt,
+            "claims": data.get("claims") or []}
+
+
+def answer(question, retriever=None, threshold=None, use_llm=False, llm_config=None, llm_transport=None):
     q = (question or "").strip()
     if not q:
         return _refuse("Please type a question.", "empty")
@@ -137,11 +191,11 @@ def answer(question, retriever=None, threshold=None):
     if len(direct) >= 2:
         intent, roots = "compare", direct[:2]
     elif len(direct) == 1:
-        intent, roots = "single_root", direct
+        intent, roots = ("meaning" if MEANING.search(q) else "single_root"), direct
     elif concept:
         intent, roots = "concept", concept
     else:
-        return _semantic(q, retriever, threshold)
+        return _with_llm(_semantic(q, retriever, threshold), q, use_llm, llm_config, llm_transport)
 
     evs = [e for e in (root_evidence(x) for x in roots) if e]
     if not evs:
@@ -152,8 +206,9 @@ def answer(question, retriever=None, threshold=None):
         extra = compare_evidence(roots[0], roots[1])
     text = _write_answer(intent, evs, extra)
     citations = sorted({a["ayah"] for e in evs for a in e["ayahs"]})
-    return {"answer": text, "citations": citations, "refused": False, "verification_errors": [],
-            "intent": intent, "roots": roots,
-            "matched": [{"root": it["root"], "via": it["via"], "matched": it["matched"]}
-                        for it in (r["direct"] + r["concept"]) if it["root"] in roots],
-            "evidence": evs}
+    res = {"answer": text, "citations": citations, "refused": False, "verification_errors": [],
+           "intent": intent, "roots": roots,
+           "matched": [{"root": it["root"], "via": it["via"], "matched": it["matched"]}
+                       for it in (r["direct"] + r["concept"]) if it["root"] in roots],
+           "evidence": evs}
+    return _with_llm(res, q, use_llm, llm_config, llm_transport)

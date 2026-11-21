@@ -19,6 +19,7 @@ Metrics (match section 10 of the proposal)
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -146,6 +147,9 @@ def main():
     ap.add_argument("--split", default="all", choices=["all", "dev", "test"])
     ap.add_argument("--retriever", default=None)
     ap.add_argument("--sweep", action="store_true")
+    ap.add_argument("--llm", action="store_true",
+                    help="let the LLM write answers (needs .env). Replies are cached in .llm_cache/, so a re-run is free")
+    ap.add_argument("--delay", type=float, default=2.0, help="seconds to wait between LLM questions (rate limits)")
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args()
     ret = retrieve.get_retriever(a.retriever)
@@ -156,7 +160,9 @@ def main():
     qs = load(a.split)
     results, passed = [], 0
     for q in qs:
-        r = answer(q["question"], retriever=ret)
+        r = answer(q["question"], retriever=ret, use_llm=a.llm)
+        if a.llm and r.get("attempts"):      # only after a real LLM call (not cache-less fallbacks)
+            time.sleep(a.delay)
         ok, notes, m = grade(q, r)
         passed += ok
         results.append((q, r, ok, notes, m))
@@ -182,6 +188,17 @@ def main():
         print(f"semantic hit@{retrieve.TOP_K}            : {rate(lambda x: x[4].get('hit'), sem_q)}   mean precision {sum(x[4]['precision'] for x in sem_q)/len(sem_q):.2f}")
     print(f"refusal accuracy            : {rate(lambda x: x[1]['refused'], ref)}   (out_of_scope + no_match must be refused)")
     print(f"false refusal rate          : {rate(lambda x: x[1]['refused'], ans)}   (answerable but refused)")
+    if a.llm:
+        gen = [x[1] for x in results if x[1].get("generated_by")]
+        by = lambda k: sum(1 for r in gen if r["generated_by"] == k)
+        print(f"\nLLM stage: {len(gen)} answers reached it | written by the LLM and verified: {by('llm')} "
+              f"| fell back to the database-only answer: {by('template')}")
+        from collections import Counter
+        why = Counter((r.get("llm_error") or "; ".join(r.get("verification_errors", []))[:160])
+                      for r in gen if r["generated_by"] == "template")
+        for reason, n in why.most_common():
+            print(f"   fallback x{n}: {reason}")
+        print(f"   regenerated once: {sum(1 for r in gen if r.get('attempts') == 2 and r['generated_by'] == 'llm')}")
     retriever_only(ret, qs)
 
 

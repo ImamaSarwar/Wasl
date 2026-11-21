@@ -16,8 +16,10 @@ def root_evidence(root):
     ayahs = {}
     for r in rows:
         f = forms.setdefault(r["lemma"], {"lemma": r["lemma"], "count": 0, "ayahs": [],
-                                          "grammar": [], "words": []})
+                                          "grammar": [], "words": [], "glosses": []})
         f["count"] += 1
+        if r["gloss"] and r["gloss"] not in f["glosses"]:
+            f["glosses"].append(r["gloss"])
         if r["ayah"] not in f["ayahs"]:
             f["ayahs"].append(r["ayah"])
         if r["grammar"] not in f["grammar"]:
@@ -27,7 +29,7 @@ def root_evidence(root):
                                          "arabic": r["ayah_arabic"], "translation": r["translation"],
                                          "hits": []})
         a["hits"].append({"word_id": r["word_id"], "word": r["word_arabic"], "lemma": r["lemma"],
-                          "grammar": r["grammar"]})
+                          "grammar": r["grammar"], "gloss": r["gloss"]})
     return {
         "root": root,
         "total": len(rows),

@@ -23,3 +23,6 @@ Thumbs.db
 
 # Evaluation raw outputs can be big; keep the question set, not every run
 eval/results/
+
+# LLM reply cache (re-running the eval costs no API quota)
+.llm_cache/

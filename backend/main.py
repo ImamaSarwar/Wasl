@@ -100,4 +100,4 @@ class AskRequest(BaseModel):
 @app.post("/api/ask")
 def ask(req: AskRequest):
     """RAG assistant: question -> resolve roots -> retrieve evidence -> answer (+ verify, later)."""
-    return rag_answer(req.question)
+    return rag_answer(req.question, use_llm=True)
