@@ -98,16 +98,22 @@ def _build_indexes():
         (_norm_lemma(lat), r) for r, e in ALIASES.items() for lat in e["lemmas"].values()
         if len(_norm_lemma(lat)) >= 4)
 
+    # exact spelling of a word form, ayn/hamza marks kept and vowels NOT collapsed: tells ʿaliym (علم)
+    # from aliym (ألم) and allows short forms (shaa, aataa, waʿd) that the loose key would drop
+    lemma_exact = _unique_index(
+        (_norm_latin(lat), r) for r, e in ALIASES.items() for lat in e["lemmas"].values()
+        if len(_norm_latin(lat)) >= 4)
+
     concepts = []
     for keys, roots in _CONCEPTS_RAW.items():
         if keys.startswith("_"):
             continue
         for k in keys.split("|"):
             concepts.append((re.compile(r"\b" + re.escape(k) + r"\b", re.I), k, roots))
-    return arabic_root, arabic_lemma, latin_root, bare_root, lemma_latin, concepts
+    return arabic_root, arabic_lemma, latin_root, bare_root, lemma_latin, lemma_exact, concepts
 
 
-_AR_ROOT, _AR_LEMMA, _LAT_ROOT, _BARE_ROOT, _LAT_LEMMA, _CONCEPTS = _build_indexes()
+_AR_ROOT, _AR_LEMMA, _LAT_ROOT, _BARE_ROOT, _LAT_LEMMA, _LAT_EXACT, _CONCEPTS = _build_indexes()
 
 _DASHED = re.compile(r"(?<![\w'])((?:kh|sh|th|dh|gh|[a-z'ʿʾʻʼ‘’`´])(?:[-–.]\s?(?:kh|sh|th|dh|gh|[a-z'ʿʾʻʼ‘’`´])){2})(?![\w'])", re.I)
 # The surah's own name must not be read as the root ملك ("in Surah Al-Mulk").
@@ -150,6 +156,8 @@ def resolve(question):
         root = _lookup_root(_BARE_ROOT, _norm_latin(w))
         if root and w.lower() not in _COMMON_WORDS:
             add(root, "latin", w, m.start())
+        elif _norm_latin(w) in _LAT_EXACT:
+            add(_LAT_EXACT[_norm_latin(w)], "lemma", w, m.start())
         elif _norm_lemma(w) in _LAT_LEMMA:
             add(_LAT_LEMMA[_norm_lemma(w)], "lemma", w, m.start())
 

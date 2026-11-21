@@ -1,0 +1,594 @@
+diff --git a/eval/generated.jsonl b/eval/generated.jsonl
+new file mode 100644
+index 0000000..20b3bcc
+--- /dev/null
++++ b/eval/generated.jsonl
+@@ -0,0 +1,125 @@
++{"id": "g001", "type": "single_root", "question": "ما هي الآيات التي فيها الجذر حسن؟", "split": "gen", "expect": {"roots": ["حسن"]}}
++{"id": "g002", "type": "single_root", "question": "How is the root جند used in Surah Al-Mulk?", "split": "gen", "expect": {"roots": ["جند"]}}
++{"id": "g003", "type": "single_root", "question": "Show me every ayah that uses the root كرر", "split": "gen", "expect": {"roots": ["كرر"]}}
++{"id": "g004", "type": "single_root", "question": "Where does the root سوي appear in the surah?", "split": "gen", "expect": {"roots": ["سوي"]}}
++{"id": "g005", "type": "single_root", "question": "How is the root صدر used in Surah Al-Mulk?", "split": "gen", "expect": {"roots": ["صدر"]}}
++{"id": "g006", "type": "single_root", "question": "Which forms of شطن occur in this surah?", "split": "gen", "expect": {"roots": ["شطن"]}}
++{"id": "g007", "type": "single_root", "question": "ما هي الآيات التي فيها الجذر ذنب؟", "split": "gen", "expect": {"roots": ["ذنب"]}}
++{"id": "g008", "type": "single_root", "question": "How is the root نكب used in Surah Al-Mulk?", "split": "gen", "expect": {"roots": ["نكب"]}}
++{"id": "g009", "type": "single_root", "question": "Which forms of عين occur in this surah?", "split": "gen", "expect": {"roots": ["عين"]}}
++{"id": "g010", "type": "single_root", "question": "Where does the root شكر appear in the surah?", "split": "gen", "expect": {"roots": ["شكر"]}}
++{"id": "g011", "type": "single_root", "question": "Where does the root صفف appear in the surah?", "split": "gen", "expect": {"roots": ["صفف"]}}
++{"id": "g012", "type": "single_root", "question": "Show me every ayah that uses the root غور", "split": "gen", "expect": {"roots": ["غور"]}}
++{"id": "g013", "type": "single_root", "question": "Which forms of رأي occur in this surah?", "split": "gen", "expect": {"roots": ["رأي"]}}
++{"id": "g014", "type": "single_root", "question": "ما هي الآيات التي فيها الجذر ميز؟", "split": "gen", "expect": {"roots": ["ميز"]}}
++{"id": "g015", "type": "single_root", "question": "How is the root خسف used in Surah Al-Mulk?", "split": "gen", "expect": {"roots": ["خسف"]}}
++{"id": "g016", "type": "single_root", "question": "Where does the root فأد appear in the surah?", "split": "gen", "expect": {"roots": ["فأد"]}}
++{"id": "g017", "type": "single_root", "question": "How is the root أله used in Surah Al-Mulk?", "split": "gen", "expect": {"roots": ["أله"]}}
++{"id": "g018", "type": "single_root", "question": "ما هي الآيات التي فيها الجذر فوج؟", "split": "gen", "expect": {"roots": ["فوج"]}}
++{"id": "g019", "type": "single_root", "question": "Show me every ayah that uses the root حيي", "split": "gen", "expect": {"roots": ["حيي"]}}
++{"id": "g020", "type": "single_root", "question": "Where does the root ربب appear in the surah?", "split": "gen", "expect": {"roots": ["ربب"]}}
++{"id": "g021", "type": "single_root", "question": "How is the root ألم used in Surah Al-Mulk?", "split": "gen", "expect": {"roots": ["ألم"]}}
++{"id": "g022", "type": "single_root", "question": "Which forms of حشر occur in this surah?", "split": "gen", "expect": {"roots": ["حشر"]}}
++{"id": "g023", "type": "single_root", "question": "ما هي الآيات التي فيها الجذر شيأ؟", "split": "gen", "expect": {"roots": ["شيأ"]}}
++{"id": "g024", "type": "single_root", "question": "Which forms of خبر occur in this surah?", "split": "gen", "expect": {"roots": ["خبر"]}}
++{"id": "g025", "type": "single_root", "question": "How is the root جهر used in Surah Al-Mulk?", "split": "gen", "expect": {"roots": ["جهر"]}}
++{"id": "g026", "type": "single_root", "question": "Where does the root srt appear?", "split": "gen", "expect": {"roots": ["صرط"]}}
++{"id": "g027", "type": "single_root", "question": "Which forms of the root sʾl are in the surah?", "split": "gen", "expect": {"roots": ["سأل"]}}
++{"id": "g028", "type": "single_root", "question": "Where does the root ʾkl appear?", "split": "gen", "expect": {"roots": ["أكل"]}}
++{"id": "g029", "type": "single_root", "question": "Show me the ayahs using the root khbr", "split": "gen", "expect": {"roots": ["خبر"]}}
++{"id": "g030", "type": "single_root", "question": "Which forms of the root ʾty are in the surah?", "split": "gen", "expect": {"roots": ["أتي"]}}
++{"id": "g031", "type": "single_root", "question": "Which forms of the root khshy are in the surah?", "split": "gen", "expect": {"roots": ["خشي"]}}
++{"id": "g032", "type": "single_root", "question": "How many times is the root nsr used and in which forms?", "split": "gen", "expect": {"roots": ["نصر"]}}
++{"id": "g033", "type": "single_root", "question": "Where does the root ʿlm appear?", "split": "gen", "expect": {"roots": ["علم"]}}
++{"id": "g034", "type": "single_root", "question": "How many times is the root bsr used and in which forms?", "split": "gen", "expect": {"roots": ["بصر"]}}
++{"id": "g035", "type": "single_root", "question": "Tell me about the root ʿtd", "split": "gen", "expect": {"roots": ["عتد"]}}
++{"id": "g036", "type": "single_root", "question": "Which forms of the root nshr are in the surah?", "split": "gen", "expect": {"roots": ["نشر"]}}
++{"id": "g037", "type": "single_root", "question": "Which forms of the root sʿr are in the surah?", "split": "gen", "expect": {"roots": ["سعر"]}}
++{"id": "g038", "type": "single_root", "question": "How many times is the root ghyb used and in which forms?", "split": "gen", "expect": {"roots": ["غيب"]}}
++{"id": "g039", "type": "single_root", "question": "Show me the ayahs using the root bʾs", "split": "gen", "expect": {"roots": ["بأس"]}}
++{"id": "g040", "type": "single_root", "question": "Where does the root dll appear?", "split": "gen", "expect": {"roots": ["ضلل"]}}
++{"id": "g041", "type": "single_root", "question": "Which forms of the root hsr are in the surah?", "split": "gen", "expect": {"roots": ["حسر"]}}
++{"id": "g042", "type": "single_root", "question": "Show me the ayahs using the root ghyz", "split": "gen", "expect": {"roots": ["غيظ"]}}
++{"id": "g043", "type": "single_root", "question": "Show me the ayahs using the root smʿ", "split": "gen", "expect": {"roots": ["سمع"]}}
++{"id": "g044", "type": "single_root", "question": "Tell me about the root ʾjr", "split": "gen", "expect": {"roots": ["أجر"]}}
++{"id": "g045", "type": "single_root", "question": "Tell me about the root wʿd", "split": "gen", "expect": {"roots": ["وعد"]}}
++{"id": "g046", "type": "single_root", "question": "Which forms of the root sbh are in the surah?", "split": "gen", "expect": {"roots": ["صبح"]}}
++{"id": "g047", "type": "single_root", "question": "Tell me about the root shb", "split": "gen", "expect": {"roots": ["صحب"]}}
++{"id": "g048", "type": "single_root", "question": "Show me the ayahs using the root rʾy", "split": "gen", "expect": {"roots": ["رأي"]}}
++{"id": "g049", "type": "single_root", "question": "Where does the root khsʾ appear?", "split": "gen", "expect": {"roots": ["خسأ"]}}
++{"id": "g050", "type": "single_root", "question": "Where does the root swʾ appear?", "split": "gen", "expect": {"roots": ["سوأ"]}}
++{"id": "g051", "type": "meaning", "question": "What does the root smʿ mean?", "split": "gen", "expect": {"roots": ["سمع"]}}
++{"id": "g052", "type": "meaning", "question": "What does the root bsr mean?", "split": "gen", "expect": {"roots": ["بصر"]}}
++{"id": "g053", "type": "meaning", "question": "What is the meaning of the root ghyz in this surah?", "split": "gen", "expect": {"roots": ["غيظ"]}}
++{"id": "g054", "type": "meaning", "question": "What does the root sbʿ mean?", "split": "gen", "expect": {"roots": ["سبع"]}}
++{"id": "g055", "type": "meaning", "question": "What is the meaning of the root ʿnd in this surah?", "split": "gen", "expect": {"roots": ["عند"]}}
++{"id": "g056", "type": "meaning", "question": "What is the meaning of the root hsb in this surah?", "split": "gen", "expect": {"roots": ["حصب"]}}
++{"id": "g057", "type": "meaning", "question": "What does the root khbr mean?", "split": "gen", "expect": {"roots": ["خبر"]}}
++{"id": "g058", "type": "meaning", "question": "What does the root shkr mean?", "split": "gen", "expect": {"roots": ["شكر"]}}
++{"id": "g059", "type": "meaning", "question": "What is the meaning of the root shtn in this surah?", "split": "gen", "expect": {"roots": ["شطن"]}}
++{"id": "g060", "type": "meaning", "question": "What does the root sʾl mean?", "split": "gen", "expect": {"roots": ["سأل"]}}
++{"id": "g061", "type": "meaning", "question": "What is the meaning of the root ʾmn in this surah?", "split": "gen", "expect": {"roots": ["أمن"]}}
++{"id": "g062", "type": "meaning", "question": "What does the root ʿml mean?", "split": "gen", "expect": {"roots": ["عمل"]}}
++{"id": "g063", "type": "meaning", "question": "What is the meaning of the root ʾrd in this surah?", "split": "gen", "expect": {"roots": ["أرض"]}}
++{"id": "g064", "type": "meaning", "question": "What does the root sff mean?", "split": "gen", "expect": {"roots": ["صفف"]}}
++{"id": "g065", "type": "meaning", "question": "What does the root shb mean?", "split": "gen", "expect": {"roots": ["صحب"]}}
++{"id": "g066", "type": "meaning", "question": "What does the root ltf mean?", "split": "gen", "expect": {"roots": ["لطف"]}}
++{"id": "g067", "type": "meaning", "question": "What is the meaning of the root shq in this surah?", "split": "gen", "expect": {"roots": ["سحق"]}}
++{"id": "g068", "type": "meaning", "question": "What does the root ʿtw mean?", "split": "gen", "expect": {"roots": ["عتو"]}}
++{"id": "g069", "type": "meaning", "question": "What does the root ʿtd mean?", "split": "gen", "expect": {"roots": ["عتد"]}}
++{"id": "g070", "type": "meaning", "question": "What does the root shyʾ mean?", "split": "gen", "expect": {"roots": ["شيأ"]}}
++{"id": "g071", "type": "meaning", "question": "What is the meaning of the root tbq in this surah?", "split": "gen", "expect": {"roots": ["طبق"]}}
++{"id": "g072", "type": "meaning", "question": "What is the meaning of the root khsʾ in this surah?", "split": "gen", "expect": {"roots": ["خسأ"]}}
++{"id": "g073", "type": "meaning", "question": "What is the meaning of the root ʾkl in this surah?", "split": "gen", "expect": {"roots": ["أكل"]}}
++{"id": "g074", "type": "meaning", "question": "What is the meaning of the root srt in this surah?", "split": "gen", "expect": {"roots": ["صرط"]}}
++{"id": "g075", "type": "meaning", "question": "What does the root hshr mean?", "split": "gen", "expect": {"roots": ["حشر"]}}
++{"id": "g076", "type": "meaning", "question": "What does the word yadaʿu mean?", "split": "gen", "expect": {"roots": ["دعو"]}}
++{"id": "g077", "type": "single_root", "question": "Tell me about the word latiyf", "split": "gen", "expect": {"roots": ["لطف"]}}
++{"id": "g078", "type": "single_root", "question": "Which root does the word kayf come from?", "split": "gen", "expect": {"roots": ["كيف"]}}
++{"id": "g079", "type": "meaning", "question": "What does the word ghuruwr mean?", "split": "gen", "expect": {"roots": ["غرر"]}}
++{"id": "g080", "type": "single_root", "question": "Tell me about the word ʿaliym", "split": "gen", "expect": {"roots": ["علم"]}}
++{"id": "g081", "type": "meaning", "question": "What does the word tamuwru mean?", "split": "gen", "expect": {"roots": ["مور"]}}
++{"id": "g082", "type": "meaning", "question": "What does the word ʿalima mean?", "split": "gen", "expect": {"roots": ["علم"]}}
++{"id": "g083", "type": "single_root", "question": "Which root does the word shaa come from?", "split": "gen", "expect": {"roots": ["شيأ"]}}
++{"id": "g084", "type": "single_root", "question": "Tell me about the word qaala", "split": "gen", "expect": {"roots": ["قول"]}}
++{"id": "g085", "type": "single_root", "question": "Tell me about the word aakala", "split": "gen", "expect": {"roots": ["أكل"]}}
++{"id": "g086", "type": "single_root", "question": "Tell me about the word haasib", "split": "gen", "expect": {"roots": ["حصب"]}}
++{"id": "g087", "type": "meaning", "question": "What does the word faara mean?", "split": "gen", "expect": {"roots": ["فور"]}}
++{"id": "g088", "type": "single_root", "question": "Which root does the word kadhaba come from?", "split": "gen", "expect": {"roots": ["كذب"]}}
++{"id": "g089", "type": "meaning", "question": "What does the word rahmaan mean?", "split": "gen", "expect": {"roots": ["رحم"]}}
++{"id": "g090", "type": "single_root", "question": "Which root does the word fawq come from?", "split": "gen", "expect": {"roots": ["فوق"]}}
++{"id": "g091", "type": "single_root", "question": "Tell me about the word aajr", "split": "gen", "expect": {"roots": ["أجر"]}}
++{"id": "g092", "type": "single_root", "question": "Which root does the word aataa come from?", "split": "gen", "expect": {"roots": ["أتي"]}}
++{"id": "g093", "type": "single_root", "question": "Which root does the word tayr come from?", "split": "gen", "expect": {"roots": ["طير"]}}
++{"id": "g094", "type": "single_root", "question": "Which root does the word aahsan come from?", "split": "gen", "expect": {"roots": ["حسن"]}}
++{"id": "g095", "type": "meaning", "question": "What does the word futuwr mean?", "split": "gen", "expect": {"roots": ["فطر"]}}
++{"id": "g096", "type": "single_root", "question": "Tell me about the word saafaat", "split": "gen", "expect": {"roots": ["صفف"]}}
++{"id": "g097", "type": "single_root", "question": "Which root does the word tabaaraka come from?", "split": "gen", "expect": {"roots": ["برك"]}}
++{"id": "g098", "type": "single_root", "question": "Which root does the word aarsala come from?", "split": "gen", "expect": {"roots": ["رسل"]}}
++{"id": "g099", "type": "single_root", "question": "Which root does the word tamayazu come from?", "split": "gen", "expect": {"roots": ["ميز"]}}
++{"id": "g100", "type": "meaning", "question": "What does the word waʿd mean?", "split": "gen", "expect": {"roots": ["وعد"]}}
++{"id": "g101", "type": "compare", "question": "How do kdhb and bsr differ in usage?", "split": "gen", "expect": {"roots": ["كذب", "بصر"]}}
++{"id": "g102", "type": "compare", "question": "What is the difference between sʿr and ghfr in this surah?", "split": "gen", "expect": {"roots": ["سعر", "غفر"]}}
++{"id": "g103", "type": "compare", "question": "Compare the roots sʿr and mshy", "split": "gen", "expect": {"roots": ["سعر", "مشي"]}}
++{"id": "g104", "type": "compare", "question": "How do ʾmn and sʿr differ in usage?", "split": "gen", "expect": {"roots": ["أمن", "سعر"]}}
++{"id": "g105", "type": "compare", "question": "How do ʾrd and ʾty differ in usage?", "split": "gen", "expect": {"roots": ["أرض", "أتي"]}}
++{"id": "g106", "type": "compare", "question": "What is the difference between jʿl and rʾy in this surah?", "split": "gen", "expect": {"roots": ["جعل", "رأي"]}}
++{"id": "g107", "type": "compare", "question": "How do sbh and jʿl differ in usage?", "split": "gen", "expect": {"roots": ["صبح", "جعل"]}}
++{"id": "g108", "type": "compare", "question": "How do ʿlm and bsr differ in usage?", "split": "gen", "expect": {"roots": ["علم", "بصر"]}}
++{"id": "g109", "type": "compare", "question": "What is the difference between ʿdhb and sbh in this surah?", "split": "gen", "expect": {"roots": ["عذب", "صبح"]}}
++{"id": "g110", "type": "compare", "question": "What is the difference between ʿlm and rʾy in this surah?", "split": "gen", "expect": {"roots": ["علم", "رأي"]}}
++{"id": "g111", "type": "compare", "question": "How do ghfr and smʿ differ in usage?", "split": "gen", "expect": {"roots": ["غفر", "سمع"]}}
++{"id": "g112", "type": "compare", "question": "What is the difference between kdhb and ʿlm in this surah?", "split": "gen", "expect": {"roots": ["كذب", "علم"]}}
++{"id": "g113", "type": "compare", "question": "What is the difference between bsr and rhm in this surah?", "split": "gen", "expect": {"roots": ["بصر", "رحم"]}}
++{"id": "g114", "type": "compare", "question": "What is the difference between ʿlm and smʿ in this surah?", "split": "gen", "expect": {"roots": ["علم", "سمع"]}}
++{"id": "g115", "type": "compare", "question": "What is the difference between kdhb and ʾrd in this surah?", "split": "gen", "expect": {"roots": ["كذب", "أرض"]}}
++{"id": "g116", "type": "compare", "question": "What is the difference between khlq and ʾty in this surah?", "split": "gen", "expect": {"roots": ["خلق", "أتي"]}}
++{"id": "g117", "type": "compare", "question": "Compare the roots kdhb and ghfr", "split": "gen", "expect": {"roots": ["كذب", "غفر"]}}
++{"id": "g118", "type": "compare", "question": "What is the difference between kdhb and smʿ in this surah?", "split": "gen", "expect": {"roots": ["كذب", "سمع"]}}
++{"id": "g119", "type": "compare", "question": "Compare the roots rhm and ʾty", "split": "gen", "expect": {"roots": ["رحم", "أتي"]}}
++{"id": "g120", "type": "compare", "question": "What is the difference between ʾty and ʿlm in this surah?", "split": "gen", "expect": {"roots": ["أتي", "علم"]}}
++{"id": "g121", "type": "compare", "question": "What is the difference between ghfr and smʿ in this surah?", "split": "gen", "expect": {"roots": ["غفر", "سمع"]}}
++{"id": "g122", "type": "compare", "question": "What is the difference between ghfr and mshy in this surah?", "split": "gen", "expect": {"roots": ["غفر", "مشي"]}}
++{"id": "g123", "type": "compare", "question": "How do smʿ and sʿr differ in usage?", "split": "gen", "expect": {"roots": ["سمع", "سعر"]}}
++{"id": "g124", "type": "compare", "question": "How do sʿr and ʿlm differ in usage?", "split": "gen", "expect": {"roots": ["سعر", "علم"]}}
++{"id": "g125", "type": "compare", "question": "How do rjʿ and sbh differ in usage?", "split": "gen", "expect": {"roots": ["رجع", "صبح"]}}
+diff --git a/eval/run_baselines.py b/eval/run_baselines.py
+new file mode 100644
+index 0000000..84012bc
+--- /dev/null
++++ b/eval/run_baselines.py
+@@ -0,0 +1,200 @@
++"""
++Compare the proposed assistant with simpler alternatives on the SAME questions.
++
++    python eval/run_baselines.py --no-llm                  # offline systems only (free, instant)
++    python eval/run_baselines.py --delay 4                 # all systems; prompt-only + hybrid_llm call Gemini
++    python eval/run_baselines.py --retriever minilm --with-generated --delay 4
++
++Systems
++  prompt_only    the LLM with NO retrieval: question in, answer out (the "simpler alternative")
++  semantic_only  embedding search over the ayah translations, nothing else
++  exact_only     resolver + database lookup only (no semantic search, no LLM)
++  hybrid_db      the full routing (exact lookup, concept map, semantic fallback), database-only answer
++  hybrid_llm     hybrid_db + LLM wording + verifier (the proposed system)
++
++Ground truth comes from the database (root questions) or hand labels (semantic questions), never from
++a model. Metrics: ayah precision (cited ayahs that really contain the root / are labelled relevant),
++recall, hit rate, share of stated counts that are right, refusal accuracy, false refusals.
++Replies are cached in .llm_cache/, so re-running costs no quota.
++"""
++import argparse
++import json
++import re
++import sys
++import time
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parent.parent
++sys.path.insert(0, str(ROOT))
++
++from backend import queries  # noqa: E402
++from rag import generate, llm, retrieve, verify  # noqa: E402
++from rag.evidence import root_evidence  # noqa: E402
++from rag.pipeline import answer  # noqa: E402
++from rag.resolve import resolve  # noqa: E402
++
++sys.path.insert(0, str(ROOT / "eval"))
++from run_eval import load  # noqa: E402
++
++ROOT_TYPES = {"single_root", "meaning", "compare", "concept"}
++REFUSE_TYPES = {"out_of_scope", "no_match"}
++ALL_SYSTEMS = ["prompt_only", "semantic_only", "exact_only", "hybrid_db", "hybrid_llm"]
++
++PROMPT_ONLY_SYSTEM = """You answer questions about Surah Al-Mulk (Quran 67, 30 ayahs) for a Quranic Arabic learning tool.
++Cite ayahs like [67:3]. Be brief (at most 4 sentences). Politely refuse questions that ask for religious rulings,
++that are about other surahs, or that are unrelated to the surah.
++Reply with JSON only: {"refuse": false, "answer": "text with [67:N] citations", "ayahs": [3, 5]}
++or {"refuse": true, "answer": "", "ayahs": []}."""
++
++
++def truth_ayahs(q):
++    t, e = q["type"], q["expect"]
++    if t == "semantic":
++        return set(e["relevant"])
++    roots = e.get("roots") or e.get("roots_include") or []
++    return {r["ayah"] for x in roots for r in queries.root_words(x)}
++
++
++def true_total(q):
++    roots = q["expect"].get("roots") or []
++    return len(queries.root_words(roots[0])) if q["type"] in ("single_root", "meaning") and len(roots) == 1 else None
++
++
++# each system returns {"refused": bool, "cited": set, "text": str, "error": str|None}
++def sys_prompt_only(q, ctx):
++    try:
++        raw = llm.generate_json(PROMPT_ONLY_SYSTEM, q["question"], config=ctx["cfg"])
++    except llm.LLMError as e:
++        return {"refused": False, "cited": set(), "text": "", "error": str(e)}
++    data = generate.parse(raw)
++    if not data:
++        return {"refused": False, "cited": set(), "text": raw, "error": None}
++    cited = set(verify.cited_ayahs({"answer": data.get("answer", ""), "claims": []}))
++    for n in data.get("ayahs") or []:
++        if isinstance(n, int):
++            cited.add(n)
++    return {"refused": bool(data.get("refuse")), "cited": cited, "text": data.get("answer", ""), "error": None}
++
++
++def sys_semantic_only(q, ctx):
++    ret = ctx["ret"]
++    thr = retrieve.threshold(ret.name)
++    hits = [n for n, sc in ret.search(q["question"], retrieve.TOP_K) if sc >= thr]
++    return {"refused": not hits, "cited": set(hits), "text": "", "error": None}
++
++
++def sys_exact_only(q, ctx):
++    r = resolve(q["question"])
++    roots = [i["root"] for i in r["direct"]][:2] or [i["root"] for i in r["concept"]]
++    evs = [e for e in (root_evidence(x) for x in roots) if e]
++    return {"refused": not evs, "cited": {a["ayah"] for e in evs for a in e["ayahs"]},
++            "text": " ".join(f"{e['total']} times" for e in evs), "error": None}
++
++
++def _pipeline(use_llm):
++    def run(q, ctx):
++        r = answer(q["question"], retriever=ctx["ret"], use_llm=use_llm)
++        err = r.get("llm_error")
++        return {"refused": r["refused"], "cited": set(r["citations"]), "text": r["answer"], "error": err,
++                "generated_by": r.get("generated_by")}
++    return run
++
++
++SYSTEMS = {"prompt_only": sys_prompt_only, "semantic_only": sys_semantic_only, "exact_only": sys_exact_only,
++           "hybrid_db": _pipeline(False), "hybrid_llm": _pipeline(True)}
++USES_LLM = {"prompt_only", "hybrid_llm"}
++
++
++def score(q, out):
++    t = q["type"]
++    if t in REFUSE_TYPES:
++        return {"kind": "refuse", "ok": out["refused"]}
++    s = {"kind": "sem" if t == "semantic" else "root", "refused": out["refused"]}
++    if out["refused"]:
++        return {**s, "precision": 0.0, "recall": 0.0, "hit": False, "count_stated": False, "count_ok": False}
++    truth, cited = truth_ayahs(q), out["cited"]
++    s["precision"] = len(cited & truth) / len(cited) if cited else 0.0
++    s["recall"] = len(cited & truth) / len(truth) if truth else 0.0
++    s["hit"] = bool(cited & truth)
++    total = true_total(q)
++    nums = set()
++    for m in verify.COUNT_PHRASE.finditer(out["text"]):
++        w = m.group(2) or m.group(1)
++        nums.add(int(w) if w.isdigit() else verify.NUMWORDS.get(w.lower()))
++    s["count_stated"] = total is not None and bool(nums)
++    s["count_ok"] = s["count_stated"] and total in nums
++    return s
++
++
++def mean(xs):
++    xs = list(xs)
++    return sum(xs) / len(xs) if xs else float("nan")
++
++
++def report(name, rows):
++    root = [s for s in rows if s["kind"] == "root"]
++    sem = [s for s in rows if s["kind"] == "sem"]
++    ref = [s for s in rows if s["kind"] == "refuse"]
++    ans = root + sem
++    cs = [s for s in root if s["count_stated"]]
++    f = lambda v: "  n/a" if v != v else f"{v:5.2f}"
++    return (f"{name:<14}| {f(mean(s['precision'] for s in root))} {f(mean(s['recall'] for s in root))} "
++            f"| {f(mean(s['hit'] for s in sem))} {f(mean(s['precision'] for s in sem))} "
++            f"| {sum(s['count_ok'] for s in cs):>3}/{len(cs):<3} "
++            f"| {sum(s['ok'] for s in ref):>3}/{len(ref):<3} | {sum(s['refused'] for s in ans):>3}/{len(ans):<3}")
++
++
++def main():
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--retriever", default=None)
++    ap.add_argument("--with-generated", action="store_true")
++    ap.add_argument("--systems", nargs="*", default=ALL_SYSTEMS, choices=ALL_SYSTEMS)
++    ap.add_argument("--no-llm", action="store_true", help="skip the systems that call the LLM")
++    ap.add_argument("--delay", type=float, default=3.0)
++    a = ap.parse_args()
++
++    systems = [s for s in a.systems if not (a.no_llm and s in USES_LLM)]
++    files = ("questions.jsonl", "generated.jsonl") if a.with_generated else ("questions.jsonl",)
++    qs = load("all", files)
++    ctx = {"ret": retrieve.get_retriever(a.retriever), "cfg": llm.get_config()}
++    if any(s in USES_LLM for s in systems) and ctx["cfg"] is None:
++        sys.exit("The LLM is not configured (.env). Use --no-llm for the offline systems.")
++
++    results, raw = {}, {}
++    for name in systems:
++        rows, errors, streak = [], 0, 0
++        for i, q in enumerate(qs, 1):
++            out = SYSTEMS[name](q, ctx)
++            if out.get("error"):
++                errors, streak = errors + 1, streak + 1
++                if streak >= 3 and name in USES_LLM:
++                    sys.exit(f"{name}: 3 provider errors in a row ({out['error']}). Stopping; try again later "
++                             f"or switch LLM_MODEL. Replies so far are cached, so nothing is lost.")
++            else:
++                streak = 0
++            rows.append(score(q, out))
++            raw.setdefault(name, []).append({"id": q["id"], "type": q["type"], "refused": out["refused"],
++                                             "cited": sorted(out["cited"]), "generated_by": out.get("generated_by"),
++                                             "error": out.get("error")})
++            if name in USES_LLM:
++                time.sleep(a.delay)
++            if i % 20 == 0:
++                print(f"  {name}: {i}/{len(qs)}", flush=True)
++        results[name] = (rows, errors)
++
++    n = {k: sum(1 for q in qs if (q["type"] in ROOT_TYPES if k == "root" else q["type"] == "semantic" if k == "sem" else q["type"] in REFUSE_TYPES)) for k in ("root", "sem", "ref")}
++    print(f"\n{len(qs)} questions: {n['root']} root/word, {n['sem']} meaning-search, {n['ref']} must-refuse "
++          f"| retriever={ctx['ret'].name}")
++    print(f"{'system':<14}| root questions  | meaning search | counts right | refusals ok | false refusals")
++    print(f"{'':<14}| prec   recall  | hit   prec     | (of stated)  | (must refuse)| (answerable)")
++    print("-" * 96)
++    for name, (rows, errors) in results.items():
++        print(report(name, rows) + (f"   [{errors} provider errors]" if errors else ""))
++    out = ROOT / "eval" / "results"
++    out.mkdir(exist_ok=True)
++    (out / "baselines.json").write_text(json.dumps(raw, ensure_ascii=False, indent=1), encoding="utf-8")
++    print(f"\nper-question details: {out / 'baselines.json'}")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/eval/run_eval.py b/eval/run_eval.py
+index 5c51375..1807832 100644
+--- a/eval/run_eval.py
++++ b/eval/run_eval.py
+@@ -30,11 +30,11 @@ from rag import retrieve  # noqa: E402
+ from rag.pipeline import answer  # noqa: E402
+ from rag.resolve import resolve  # noqa: E402
+ 
+-ANSWERABLE = {"single_root", "compare", "concept", "semantic"}
++ANSWERABLE = {"single_root", "meaning", "compare", "concept", "semantic"}
+ 
+ 
+-def load(split):
+-    qs = [json.loads(l) for l in open(ROOT / "eval" / "questions.jsonl", encoding="utf-8") if l.strip()]
++def load(split, files=("questions.jsonl",)):
++    qs = [json.loads(l) for f in files for l in open(ROOT / "eval" / f, encoding="utf-8") if l.strip()]
+     return [q for q in qs if split == "all" or q["split"] == split]
+ 
+ 
+@@ -62,8 +62,8 @@ def grade(q, r):
+     if not m["intent_ok"]:
+         notes.append(f"intent {r['intent']} != {t}")
+ 
+-    if t in ("single_root", "compare"):
+-        m["roots_ok"] = r["roots"] == exp["roots"] if t == "single_root" else set(r["roots"]) == set(exp["roots"])
++    if t in ("single_root", "meaning", "compare"):
++        m["roots_ok"] = r["roots"] == exp["roots"] if t != "compare" else set(r["roots"]) == set(exp["roots"])
+         if not m["roots_ok"]:
+             notes.append(f"roots {r['roots']} != {exp['roots']}")
+     if t == "concept":
+@@ -144,7 +144,9 @@ def sweep(retriever, split):
+ 
+ def main():
+     ap = argparse.ArgumentParser()
+-    ap.add_argument("--split", default="all", choices=["all", "dev", "test"])
++    ap.add_argument("--split", default="all", choices=["all", "dev", "test", "gen"])
++    ap.add_argument("--with-generated", action="store_true",
++                    help="also use eval/generated.jsonl (python scripts/make_eval_set.py)")
+     ap.add_argument("--retriever", default=None)
+     ap.add_argument("--sweep", action="store_true")
+     ap.add_argument("--llm", action="store_true",
+@@ -157,7 +159,7 @@ def main():
+     if a.sweep:
+         return sweep(ret, "dev" if a.split == "all" else a.split)
+ 
+-    qs = load(a.split)
++    qs = load(a.split, ("questions.jsonl", "generated.jsonl") if a.with_generated or a.split == "gen" else ("questions.jsonl",))
+     results, passed = [], 0
+     for q in qs:
+         r = answer(q["question"], retriever=ret, use_llm=a.llm)
+@@ -182,7 +184,7 @@ def main():
+     print(f"\n=== {len(qs)} questions, split={a.split}, retriever={ret.name}, threshold={retrieve.threshold(ret.name)} ===")
+     print(f"overall pass                : {passed}/{len(qs)}")
+     print(f"routing (intent) accuracy   : {rate(lambda x: x[4].get('intent_ok', False), ans)}")
+-    print(f"root accuracy               : {rate(lambda x: x[4].get('roots_ok', False), [y for y in ans if y[0]['type'] in ('single_root','compare','concept')])}")
++    print(f"root accuracy               : {rate(lambda x: x[4].get('roots_ok', False), [y for y in ans if y[0]['type'] in ('single_root','meaning','compare','concept')])}")
+     print(f"citation validity (roots)   : {sum(x[4].get('cit_valid', 0) for x in root_q)}/{sum(x[4].get('cit_total', 0) for x in root_q)} cited ayahs exist and contain the root")
+     if sem_q:
+         print(f"semantic hit@{retrieve.TOP_K}            : {rate(lambda x: x[4].get('hit'), sem_q)}   mean precision {sum(x[4]['precision'] for x in sem_q)/len(sem_q):.2f}")
+diff --git a/rag/resolve.py b/rag/resolve.py
+index 43616d0..9274f3d 100644
+--- a/rag/resolve.py
++++ b/rag/resolve.py
+@@ -98,16 +98,22 @@ def _build_indexes():
+         (_norm_lemma(lat), r) for r, e in ALIASES.items() for lat in e["lemmas"].values()
+         if len(_norm_lemma(lat)) >= 4)
+ 
++    # exact spelling of a word form, ayn/hamza marks kept and vowels NOT collapsed: tells ʿaliym (علم)
++    # from aliym (ألم) and allows short forms (shaa, aataa, waʿd) that the loose key would drop
++    lemma_exact = _unique_index(
++        (_norm_latin(lat), r) for r, e in ALIASES.items() for lat in e["lemmas"].values()
++        if len(_norm_latin(lat)) >= 4)
++
+     concepts = []
+     for keys, roots in _CONCEPTS_RAW.items():
+         if keys.startswith("_"):
+             continue
+         for k in keys.split("|"):
+             concepts.append((re.compile(r"\b" + re.escape(k) + r"\b", re.I), k, roots))
+-    return arabic_root, arabic_lemma, latin_root, bare_root, lemma_latin, concepts
++    return arabic_root, arabic_lemma, latin_root, bare_root, lemma_latin, lemma_exact, concepts
+ 
+ 
+-_AR_ROOT, _AR_LEMMA, _LAT_ROOT, _BARE_ROOT, _LAT_LEMMA, _CONCEPTS = _build_indexes()
++_AR_ROOT, _AR_LEMMA, _LAT_ROOT, _BARE_ROOT, _LAT_LEMMA, _LAT_EXACT, _CONCEPTS = _build_indexes()
+ 
+ _DASHED = re.compile(r"(?<![\w'])((?:kh|sh|th|dh|gh|[a-z'ʿʾʻʼ‘’`´])(?:[-–.]\s?(?:kh|sh|th|dh|gh|[a-z'ʿʾʻʼ‘’`´])){2})(?![\w'])", re.I)
+ # The surah's own name must not be read as the root ملك ("in Surah Al-Mulk").
+@@ -150,6 +156,8 @@ def resolve(question):
+         root = _lookup_root(_BARE_ROOT, _norm_latin(w))
+         if root and w.lower() not in _COMMON_WORDS:
+             add(root, "latin", w, m.start())
++        elif _norm_latin(w) in _LAT_EXACT:
++            add(_LAT_EXACT[_norm_latin(w)], "lemma", w, m.start())
+         elif _norm_lemma(w) in _LAT_LEMMA:
+             add(_LAT_LEMMA[_norm_lemma(w)], "lemma", w, m.start())
+ 
+diff --git a/scripts/make_eval_set.py b/scripts/make_eval_set.py
+new file mode 100644
+index 0000000..0bbc4c3
+--- /dev/null
++++ b/scripts/make_eval_set.py
+@@ -0,0 +1,73 @@
++"""
++Generate labelled evaluation questions from the verified database (no hand labelling, no LLM).
++
++    python scripts/make_eval_set.py          # writes eval/generated.jsonl
++
++The correct answer to each question is known by construction (the root comes from the database),
++so these questions measure root identification at scale. Fixed seed -> same file every time.
++Hand-written questions (eval/questions.jsonl) cover meaning search, refusals and tricky cases.
++"""
++import json
++import random
++import sys
++from collections import Counter
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parent.parent
++sys.path.insert(0, str(ROOT))
++from backend import queries  # noqa: E402
++
++N_EACH = 25   # per question kind
++
++ARABIC = ["ما هي الآيات التي فيها الجذر {r}؟", "Where does the root {r} appear in the surah?",
++          "Show me every ayah that uses the root {r}", "How is the root {r} used in Surah Al-Mulk?",
++          "Which forms of {r} occur in this surah?"]
++LATIN = ["Where does the root {r} appear?", "How many times is the root {r} used and in which forms?",
++         "Show me the ayahs using the root {r}", "Which forms of the root {r} are in the surah?",
++         "Tell me about the root {r}"]
++MEANING = ["What does the root {r} mean?", "What is the meaning of the root {r} in this surah?"]
++WORD = ["What does the word {w} mean?", "Which root does the word {w} come from?",
++        "Tell me about the word {w}"]
++COMPARE = ["Compare the roots {a} and {b}", "What is the difference between {a} and {b} in this surah?",
++           "How do {a} and {b} differ in usage?"]
++
++
++def main():
++    rng = random.Random(67)
++    aliases = json.load(open(ROOT / "rag" / "aliases.json", encoding="utf-8"))
++    roots = sorted(aliases)
++    counts = {r: len(queries.root_words(r)) for r in roots}
++    lat = Counter(a["latin"] for a in aliases.values())
++    unique_lat = [r for r in roots if lat[aliases[r]["latin"]] == 1 and aliases[r]["latin"] != aliases[r]["buckwalter"]]
++    lemma_lat = Counter(l for a in aliases.values() for l in a["lemmas"].values())
++    out, n = [], 0
++
++    def add(kind, question, expect):
++        nonlocal n
++        n += 1
++        out.append({"id": f"g{n:03d}", "type": kind, "question": question, "split": "gen", "expect": expect})
++
++    for r in rng.sample(roots, N_EACH):
++        add("single_root", rng.choice(ARABIC).format(r=r), {"roots": [r]})
++    for r in rng.sample(unique_lat, N_EACH):
++        add("single_root", rng.choice(LATIN).format(r=aliases[r]["latin"]), {"roots": [r]})
++    for r in rng.sample(unique_lat, N_EACH):
++        add("meaning", rng.choice(MEANING).format(r=aliases[r]["latin"]), {"roots": [r]})
++    words = [(r, l) for r in roots for l in aliases[r]["lemmas"].values() if lemma_lat[l] == 1 and len(l) > 3]
++    for r, l in rng.sample(words, N_EACH):
++        q = rng.choice(WORD).format(w=l)
++        add("meaning" if "mean" in q else "single_root", q, {"roots": [r]})
++    multi = [r for r in unique_lat if counts[r] >= 2]
++    for _ in range(N_EACH):
++        a, b = rng.sample(multi, 2)
++        add("compare", rng.choice(COMPARE).format(a=aliases[a]["latin"], b=aliases[b]["latin"]), {"roots": [a, b]})
++
++    path = ROOT / "eval" / "generated.jsonl"
++    with open(path, "w", encoding="utf-8", newline="\n") as f:
++        for q in out:
++            f.write(json.dumps(q, ensure_ascii=False) + "\n")
++    print(f"wrote {len(out)} questions to {path}")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/tests/test_baselines.py b/tests/test_baselines.py
+new file mode 100644
+index 0000000..8b59a6e
+--- /dev/null
++++ b/tests/test_baselines.py
+@@ -0,0 +1,75 @@
++import json
++import sys
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parent.parent
++sys.path.insert(0, str(ROOT / "eval"))
++sys.path.insert(0, str(ROOT / "scripts"))
++
++import run_baselines as rb  # noqa: E402
++from backend import queries  # noqa: E402
++from rag import llm  # noqa: E402
++from rag.resolve import resolve  # noqa: E402
++
++
++def test_generated_questions_are_labelled_from_the_database():
++    import make_eval_set
++    make_eval_set.main()
++    qs = [json.loads(l) for l in open(ROOT / "eval" / "generated.jsonl", encoding="utf-8")]
++    assert len(qs) >= 100
++    assert len({q["id"] for q in qs}) == len(qs)
++    for q in qs:
++        assert all(queries.root_words(r) for r in q["expect"]["roots"])   # every gold root exists
++
++
++def test_generated_questions_are_deterministic():
++    import make_eval_set
++    path = ROOT / "eval" / "generated.jsonl"
++    make_eval_set.main()
++    first = path.read_text(encoding="utf-8")
++    make_eval_set.main()
++    assert path.read_text(encoding="utf-8") == first
++
++
++def test_exact_spelling_resolves_word_forms_the_loose_key_cannot():
++    # the loose key (vowels collapsed, ayn dropped) collides for these; the exact spelling does not
++    assert resolve("Tell me about the word ʿaliym")["direct"][0]["root"] == "علم"
++    assert resolve("Tell me about the word aajr")["direct"][0]["root"] == "أجر"
++
++
++def test_short_word_forms_resolve():
++    assert resolve("What does the word waʿd mean?")["direct"][0]["root"] == "وعد"
++
++
++def test_score_penalises_cited_ayahs_that_do_not_contain_the_root():
++    q = {"type": "single_root", "expect": {"roots": ["خلق"]}}
++    truth = rb.truth_ayahs(q)
++    good = rb.score(q, {"refused": False, "cited": set(truth), "text": ""})
++    bad = rb.score(q, {"refused": False, "cited": set(truth) | {99}, "text": ""})
++    assert good["precision"] == 1.0 and good["recall"] == 1.0
++    assert bad["precision"] < 1.0 and bad["recall"] == 1.0
++
++
++def test_score_checks_stated_counts():
++    q = {"type": "single_root", "expect": {"roots": ["خلق"]}}
++    total = rb.true_total(q)
++    ok = rb.score(q, {"refused": False, "cited": {1}, "text": f"it occurs {total} times"})
++    wrong = rb.score(q, {"refused": False, "cited": {1}, "text": f"it occurs {total + 5} times"})
++    assert ok["count_ok"] and wrong["count_stated"] and not wrong["count_ok"]
++
++
++def test_prompt_only_system_reads_the_models_json(monkeypatch):
++    reply = json.dumps({"refuse": False, "answer": "Seen in [67:3] and ayah 4.", "ayahs": [5]})
++    monkeypatch.setattr(llm, "generate_json", lambda *a, **k: reply)
++    out = rb.sys_prompt_only({"question": "x"}, {"cfg": object()})
++    assert out["cited"] == {3, 4, 5} and not out["refused"]
++    monkeypatch.setattr(llm, "generate_json", lambda *a, **k: json.dumps({"refuse": True, "answer": "", "ayahs": []}))
++    assert rb.sys_prompt_only({"question": "x"}, {"cfg": object()})["refused"]
++
++
++def test_prompt_only_survives_an_llm_failure(monkeypatch):
++    def boom(*a, **k):
++        raise llm.LLMError("HTTP 503: provider error")
++    monkeypatch.setattr(llm, "generate_json", boom)
++    out = rb.sys_prompt_only({"question": "x"}, {"cfg": object()})
++    assert out["error"] and out["cited"] == set()

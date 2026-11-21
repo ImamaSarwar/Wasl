@@ -1,0 +1,125 @@
+{"id": "g001", "type": "single_root", "question": "ما هي الآيات التي فيها الجذر حسن؟", "split": "gen", "expect": {"roots": ["حسن"]}}
+{"id": "g002", "type": "single_root", "question": "How is the root جند used in Surah Al-Mulk?", "split": "gen", "expect": {"roots": ["جند"]}}
+{"id": "g003", "type": "single_root", "question": "Show me every ayah that uses the root كرر", "split": "gen", "expect": {"roots": ["كرر"]}}
+{"id": "g004", "type": "single_root", "question": "Where does the root سوي appear in the surah?", "split": "gen", "expect": {"roots": ["سوي"]}}
+{"id": "g005", "type": "single_root", "question": "How is the root صدر used in Surah Al-Mulk?", "split": "gen", "expect": {"roots": ["صدر"]}}
+{"id": "g006", "type": "single_root", "question": "Which forms of شطن occur in this surah?", "split": "gen", "expect": {"roots": ["شطن"]}}
+{"id": "g007", "type": "single_root", "question": "ما هي الآيات التي فيها الجذر ذنب؟", "split": "gen", "expect": {"roots": ["ذنب"]}}
+{"id": "g008", "type": "single_root", "question": "How is the root نكب used in Surah Al-Mulk?", "split": "gen", "expect": {"roots": ["نكب"]}}
+{"id": "g009", "type": "single_root", "question": "Which forms of عين occur in this surah?", "split": "gen", "expect": {"roots": ["عين"]}}
+{"id": "g010", "type": "single_root", "question": "Where does the root شكر appear in the surah?", "split": "gen", "expect": {"roots": ["شكر"]}}
+{"id": "g011", "type": "single_root", "question": "Where does the root صفف appear in the surah?", "split": "gen", "expect": {"roots": ["صفف"]}}
+{"id": "g012", "type": "single_root", "question": "Show me every ayah that uses the root غور", "split": "gen", "expect": {"roots": ["غور"]}}
+{"id": "g013", "type": "single_root", "question": "Which forms of رأي occur in this surah?", "split": "gen", "expect": {"roots": ["رأي"]}}
+{"id": "g014", "type": "single_root", "question": "ما هي الآيات التي فيها الجذر ميز؟", "split": "gen", "expect": {"roots": ["ميز"]}}
+{"id": "g015", "type": "single_root", "question": "How is the root خسف used in Surah Al-Mulk?", "split": "gen", "expect": {"roots": ["خسف"]}}
+{"id": "g016", "type": "single_root", "question": "Where does the root فأد appear in the surah?", "split": "gen", "expect": {"roots": ["فأد"]}}
+{"id": "g017", "type": "single_root", "question": "How is the root أله used in Surah Al-Mulk?", "split": "gen", "expect": {"roots": ["أله"]}}
+{"id": "g018", "type": "single_root", "question": "ما هي الآيات التي فيها الجذر فوج؟", "split": "gen", "expect": {"roots": ["فوج"]}}
+{"id": "g019", "type": "single_root", "question": "Show me every ayah that uses the root حيي", "split": "gen", "expect": {"roots": ["حيي"]}}
+{"id": "g020", "type": "single_root", "question": "Where does the root ربب appear in the surah?", "split": "gen", "expect": {"roots": ["ربب"]}}
+{"id": "g021", "type": "single_root", "question": "How is the root ألم used in Surah Al-Mulk?", "split": "gen", "expect": {"roots": ["ألم"]}}
+{"id": "g022", "type": "single_root", "question": "Which forms of حشر occur in this surah?", "split": "gen", "expect": {"roots": ["حشر"]}}
+{"id": "g023", "type": "single_root", "question": "ما هي الآيات التي فيها الجذر شيأ؟", "split": "gen", "expect": {"roots": ["شيأ"]}}
+{"id": "g024", "type": "single_root", "question": "Which forms of خبر occur in this surah?", "split": "gen", "expect": {"roots": ["خبر"]}}
+{"id": "g025", "type": "single_root", "question": "How is the root جهر used in Surah Al-Mulk?", "split": "gen", "expect": {"roots": ["جهر"]}}
+{"id": "g026", "type": "single_root", "question": "Where does the root srt appear?", "split": "gen", "expect": {"roots": ["صرط"]}}
+{"id": "g027", "type": "single_root", "question": "Which forms of the root sʾl are in the surah?", "split": "gen", "expect": {"roots": ["سأل"]}}
+{"id": "g028", "type": "single_root", "question": "Where does the root ʾkl appear?", "split": "gen", "expect": {"roots": ["أكل"]}}
+{"id": "g029", "type": "single_root", "question": "Show me the ayahs using the root khbr", "split": "gen", "expect": {"roots": ["خبر"]}}
+{"id": "g030", "type": "single_root", "question": "Which forms of the root ʾty are in the surah?", "split": "gen", "expect": {"roots": ["أتي"]}}
+{"id": "g031", "type": "single_root", "question": "Which forms of the root khshy are in the surah?", "split": "gen", "expect": {"roots": ["خشي"]}}
+{"id": "g032", "type": "single_root", "question": "How many times is the root nsr used and in which forms?", "split": "gen", "expect": {"roots": ["نصر"]}}
+{"id": "g033", "type": "single_root", "question": "Where does the root ʿlm appear?", "split": "gen", "expect": {"roots": ["علم"]}}
+{"id": "g034", "type": "single_root", "question": "How many times is the root bsr used and in which forms?", "split": "gen", "expect": {"roots": ["بصر"]}}
+{"id": "g035", "type": "single_root", "question": "Tell me about the root ʿtd", "split": "gen", "expect": {"roots": ["عتد"]}}
+{"id": "g036", "type": "single_root", "question": "Which forms of the root nshr are in the surah?", "split": "gen", "expect": {"roots": ["نشر"]}}
+{"id": "g037", "type": "single_root", "question": "Which forms of the root sʿr are in the surah?", "split": "gen", "expect": {"roots": ["سعر"]}}
+{"id": "g038", "type": "single_root", "question": "How many times is the root ghyb used and in which forms?", "split": "gen", "expect": {"roots": ["غيب"]}}
+{"id": "g039", "type": "single_root", "question": "Show me the ayahs using the root bʾs", "split": "gen", "expect": {"roots": ["بأس"]}}
+{"id": "g040", "type": "single_root", "question": "Where does the root dll appear?", "split": "gen", "expect": {"roots": ["ضلل"]}}
+{"id": "g041", "type": "single_root", "question": "Which forms of the root hsr are in the surah?", "split": "gen", "expect": {"roots": ["حسر"]}}
+{"id": "g042", "type": "single_root", "question": "Show me the ayahs using the root ghyz", "split": "gen", "expect": {"roots": ["غيظ"]}}
+{"id": "g043", "type": "single_root", "question": "Show me the ayahs using the root smʿ", "split": "gen", "expect": {"roots": ["سمع"]}}
+{"id": "g044", "type": "single_root", "question": "Tell me about the root ʾjr", "split": "gen", "expect": {"roots": ["أجر"]}}
+{"id": "g045", "type": "single_root", "question": "Tell me about the root wʿd", "split": "gen", "expect": {"roots": ["وعد"]}}
+{"id": "g046", "type": "single_root", "question": "Which forms of the root sbh are in the surah?", "split": "gen", "expect": {"roots": ["صبح"]}}
+{"id": "g047", "type": "single_root", "question": "Tell me about the root shb", "split": "gen", "expect": {"roots": ["صحب"]}}
+{"id": "g048", "type": "single_root", "question": "Show me the ayahs using the root rʾy", "split": "gen", "expect": {"roots": ["رأي"]}}
+{"id": "g049", "type": "single_root", "question": "Where does the root khsʾ appear?", "split": "gen", "expect": {"roots": ["خسأ"]}}
+{"id": "g050", "type": "single_root", "question": "Where does the root swʾ appear?", "split": "gen", "expect": {"roots": ["سوأ"]}}
+{"id": "g051", "type": "meaning", "question": "What does the root smʿ mean?", "split": "gen", "expect": {"roots": ["سمع"]}}
+{"id": "g052", "type": "meaning", "question": "What does the root bsr mean?", "split": "gen", "expect": {"roots": ["بصر"]}}
+{"id": "g053", "type": "meaning", "question": "What is the meaning of the root ghyz in this surah?", "split": "gen", "expect": {"roots": ["غيظ"]}}
+{"id": "g054", "type": "meaning", "question": "What does the root sbʿ mean?", "split": "gen", "expect": {"roots": ["سبع"]}}
+{"id": "g055", "type": "meaning", "question": "What is the meaning of the root ʿnd in this surah?", "split": "gen", "expect": {"roots": ["عند"]}}
+{"id": "g056", "type": "meaning", "question": "What is the meaning of the root hsb in this surah?", "split": "gen", "expect": {"roots": ["حصب"]}}
+{"id": "g057", "type": "meaning", "question": "What does the root khbr mean?", "split": "gen", "expect": {"roots": ["خبر"]}}
+{"id": "g058", "type": "meaning", "question": "What does the root shkr mean?", "split": "gen", "expect": {"roots": ["شكر"]}}
+{"id": "g059", "type": "meaning", "question": "What is the meaning of the root shtn in this surah?", "split": "gen", "expect": {"roots": ["شطن"]}}
+{"id": "g060", "type": "meaning", "question": "What does the root sʾl mean?", "split": "gen", "expect": {"roots": ["سأل"]}}
+{"id": "g061", "type": "meaning", "question": "What is the meaning of the root ʾmn in this surah?", "split": "gen", "expect": {"roots": ["أمن"]}}
+{"id": "g062", "type": "meaning", "question": "What does the root ʿml mean?", "split": "gen", "expect": {"roots": ["عمل"]}}
+{"id": "g063", "type": "meaning", "question": "What is the meaning of the root ʾrd in this surah?", "split": "gen", "expect": {"roots": ["أرض"]}}
+{"id": "g064", "type": "meaning", "question": "What does the root sff mean?", "split": "gen", "expect": {"roots": ["صفف"]}}
+{"id": "g065", "type": "meaning", "question": "What does the root shb mean?", "split": "gen", "expect": {"roots": ["صحب"]}}
+{"id": "g066", "type": "meaning", "question": "What does the root ltf mean?", "split": "gen", "expect": {"roots": ["لطف"]}}
+{"id": "g067", "type": "meaning", "question": "What is the meaning of the root shq in this surah?", "split": "gen", "expect": {"roots": ["سحق"]}}
+{"id": "g068", "type": "meaning", "question": "What does the root ʿtw mean?", "split": "gen", "expect": {"roots": ["عتو"]}}
+{"id": "g069", "type": "meaning", "question": "What does the root ʿtd mean?", "split": "gen", "expect": {"roots": ["عتد"]}}
+{"id": "g070", "type": "meaning", "question": "What does the root shyʾ mean?", "split": "gen", "expect": {"roots": ["شيأ"]}}
+{"id": "g071", "type": "meaning", "question": "What is the meaning of the root tbq in this surah?", "split": "gen", "expect": {"roots": ["طبق"]}}
+{"id": "g072", "type": "meaning", "question": "What is the meaning of the root khsʾ in this surah?", "split": "gen", "expect": {"roots": ["خسأ"]}}
+{"id": "g073", "type": "meaning", "question": "What is the meaning of the root ʾkl in this surah?", "split": "gen", "expect": {"roots": ["أكل"]}}
+{"id": "g074", "type": "meaning", "question": "What is the meaning of the root srt in this surah?", "split": "gen", "expect": {"roots": ["صرط"]}}
+{"id": "g075", "type": "meaning", "question": "What does the root hshr mean?", "split": "gen", "expect": {"roots": ["حشر"]}}
+{"id": "g076", "type": "meaning", "question": "What does the word yadaʿu mean?", "split": "gen", "expect": {"roots": ["دعو"]}}
+{"id": "g077", "type": "single_root", "question": "Tell me about the word latiyf", "split": "gen", "expect": {"roots": ["لطف"]}}
+{"id": "g078", "type": "single_root", "question": "Which root does the word kayf come from?", "split": "gen", "expect": {"roots": ["كيف"]}}
+{"id": "g079", "type": "meaning", "question": "What does the word ghuruwr mean?", "split": "gen", "expect": {"roots": ["غرر"]}}
+{"id": "g080", "type": "single_root", "question": "Tell me about the word ʿaliym", "split": "gen", "expect": {"roots": ["علم"]}}
+{"id": "g081", "type": "meaning", "question": "What does the word tamuwru mean?", "split": "gen", "expect": {"roots": ["مور"]}}
+{"id": "g082", "type": "meaning", "question": "What does the word ʿalima mean?", "split": "gen", "expect": {"roots": ["علم"]}}
+{"id": "g083", "type": "single_root", "question": "Which root does the word shaa come from?", "split": "gen", "expect": {"roots": ["شيأ"]}}
+{"id": "g084", "type": "single_root", "question": "Tell me about the word qaala", "split": "gen", "expect": {"roots": ["قول"]}}
+{"id": "g085", "type": "single_root", "question": "Tell me about the word aakala", "split": "gen", "expect": {"roots": ["أكل"]}}
+{"id": "g086", "type": "single_root", "question": "Tell me about the word haasib", "split": "gen", "expect": {"roots": ["حصب"]}}
+{"id": "g087", "type": "meaning", "question": "What does the word faara mean?", "split": "gen", "expect": {"roots": ["فور"]}}
+{"id": "g088", "type": "single_root", "question": "Which root does the word kadhaba come from?", "split": "gen", "expect": {"roots": ["كذب"]}}
+{"id": "g089", "type": "meaning", "question": "What does the word rahmaan mean?", "split": "gen", "expect": {"roots": ["رحم"]}}
+{"id": "g090", "type": "single_root", "question": "Which root does the word fawq come from?", "split": "gen", "expect": {"roots": ["فوق"]}}
+{"id": "g091", "type": "single_root", "question": "Tell me about the word aajr", "split": "gen", "expect": {"roots": ["أجر"]}}
+{"id": "g092", "type": "single_root", "question": "Which root does the word aataa come from?", "split": "gen", "expect": {"roots": ["أتي"]}}
+{"id": "g093", "type": "single_root", "question": "Which root does the word tayr come from?", "split": "gen", "expect": {"roots": ["طير"]}}
+{"id": "g094", "type": "single_root", "question": "Which root does the word aahsan come from?", "split": "gen", "expect": {"roots": ["حسن"]}}
+{"id": "g095", "type": "meaning", "question": "What does the word futuwr mean?", "split": "gen", "expect": {"roots": ["فطر"]}}
+{"id": "g096", "type": "single_root", "question": "Tell me about the word saafaat", "split": "gen", "expect": {"roots": ["صفف"]}}
+{"id": "g097", "type": "single_root", "question": "Which root does the word tabaaraka come from?", "split": "gen", "expect": {"roots": ["برك"]}}
+{"id": "g098", "type": "single_root", "question": "Which root does the word aarsala come from?", "split": "gen", "expect": {"roots": ["رسل"]}}
+{"id": "g099", "type": "single_root", "question": "Which root does the word tamayazu come from?", "split": "gen", "expect": {"roots": ["ميز"]}}
+{"id": "g100", "type": "meaning", "question": "What does the word waʿd mean?", "split": "gen", "expect": {"roots": ["وعد"]}}
+{"id": "g101", "type": "compare", "question": "How do kdhb and bsr differ in usage?", "split": "gen", "expect": {"roots": ["كذب", "بصر"]}}
+{"id": "g102", "type": "compare", "question": "What is the difference between sʿr and ghfr in this surah?", "split": "gen", "expect": {"roots": ["سعر", "غفر"]}}
+{"id": "g103", "type": "compare", "question": "Compare the roots sʿr and mshy", "split": "gen", "expect": {"roots": ["سعر", "مشي"]}}
+{"id": "g104", "type": "compare", "question": "How do ʾmn and sʿr differ in usage?", "split": "gen", "expect": {"roots": ["أمن", "سعر"]}}
+{"id": "g105", "type": "compare", "question": "How do ʾrd and ʾty differ in usage?", "split": "gen", "expect": {"roots": ["أرض", "أتي"]}}
+{"id": "g106", "type": "compare", "question": "What is the difference between jʿl and rʾy in this surah?", "split": "gen", "expect": {"roots": ["جعل", "رأي"]}}
+{"id": "g107", "type": "compare", "question": "How do sbh and jʿl differ in usage?", "split": "gen", "expect": {"roots": ["صبح", "جعل"]}}
+{"id": "g108", "type": "compare", "question": "How do ʿlm and bsr differ in usage?", "split": "gen", "expect": {"roots": ["علم", "بصر"]}}
+{"id": "g109", "type": "compare", "question": "What is the difference between ʿdhb and sbh in this surah?", "split": "gen", "expect": {"roots": ["عذب", "صبح"]}}
+{"id": "g110", "type": "compare", "question": "What is the difference between ʿlm and rʾy in this surah?", "split": "gen", "expect": {"roots": ["علم", "رأي"]}}
+{"id": "g111", "type": "compare", "question": "How do ghfr and smʿ differ in usage?", "split": "gen", "expect": {"roots": ["غفر", "سمع"]}}
+{"id": "g112", "type": "compare", "question": "What is the difference between kdhb and ʿlm in this surah?", "split": "gen", "expect": {"roots": ["كذب", "علم"]}}
+{"id": "g113", "type": "compare", "question": "What is the difference between bsr and rhm in this surah?", "split": "gen", "expect": {"roots": ["بصر", "رحم"]}}
+{"id": "g114", "type": "compare", "question": "What is the difference between ʿlm and smʿ in this surah?", "split": "gen", "expect": {"roots": ["علم", "سمع"]}}
+{"id": "g115", "type": "compare", "question": "What is the difference between kdhb and ʾrd in this surah?", "split": "gen", "expect": {"roots": ["كذب", "أرض"]}}
+{"id": "g116", "type": "compare", "question": "What is the difference between khlq and ʾty in this surah?", "split": "gen", "expect": {"roots": ["خلق", "أتي"]}}
+{"id": "g117", "type": "compare", "question": "Compare the roots kdhb and ghfr", "split": "gen", "expect": {"roots": ["كذب", "غفر"]}}
+{"id": "g118", "type": "compare", "question": "What is the difference between kdhb and smʿ in this surah?", "split": "gen", "expect": {"roots": ["كذب", "سمع"]}}
+{"id": "g119", "type": "compare", "question": "Compare the roots rhm and ʾty", "split": "gen", "expect": {"roots": ["رحم", "أتي"]}}
+{"id": "g120", "type": "compare", "question": "What is the difference between ʾty and ʿlm in this surah?", "split": "gen", "expect": {"roots": ["أتي", "علم"]}}
+{"id": "g121", "type": "compare", "question": "What is the difference between ghfr and smʿ in this surah?", "split": "gen", "expect": {"roots": ["غفر", "سمع"]}}
+{"id": "g122", "type": "compare", "question": "What is the difference between ghfr and mshy in this surah?", "split": "gen", "expect": {"roots": ["غفر", "مشي"]}}
+{"id": "g123", "type": "compare", "question": "How do smʿ and sʿr differ in usage?", "split": "gen", "expect": {"roots": ["سمع", "سعر"]}}
+{"id": "g124", "type": "compare", "question": "How do sʿr and ʿlm differ in usage?", "split": "gen", "expect": {"roots": ["سعر", "علم"]}}
+{"id": "g125", "type": "compare", "question": "How do rjʿ and sbh differ in usage?", "split": "gen", "expect": {"roots": ["رجع", "صبح"]}}

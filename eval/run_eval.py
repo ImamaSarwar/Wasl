@@ -30,11 +30,11 @@ from rag import retrieve  # noqa: E402
 from rag.pipeline import answer  # noqa: E402
 from rag.resolve import resolve  # noqa: E402
 
-ANSWERABLE = {"single_root", "compare", "concept", "semantic"}
+ANSWERABLE = {"single_root", "meaning", "compare", "concept", "semantic"}
 
 
-def load(split):
-    qs = [json.loads(l) for l in open(ROOT / "eval" / "questions.jsonl", encoding="utf-8") if l.strip()]
+def load(split, files=("questions.jsonl",)):
+    qs = [json.loads(l) for f in files for l in open(ROOT / "eval" / f, encoding="utf-8") if l.strip()]
     return [q for q in qs if split == "all" or q["split"] == split]
 
 
@@ -62,8 +62,8 @@ def grade(q, r):
     if not m["intent_ok"]:
         notes.append(f"intent {r['intent']} != {t}")
 
-    if t in ("single_root", "compare"):
-        m["roots_ok"] = r["roots"] == exp["roots"] if t == "single_root" else set(r["roots"]) == set(exp["roots"])
+    if t in ("single_root", "meaning", "compare"):
+        m["roots_ok"] = r["roots"] == exp["roots"] if t != "compare" else set(r["roots"]) == set(exp["roots"])
         if not m["roots_ok"]:
             notes.append(f"roots {r['roots']} != {exp['roots']}")
     if t == "concept":
@@ -144,7 +144,9 @@ def sweep(retriever, split):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--split", default="all", choices=["all", "dev", "test"])
+    ap.add_argument("--split", default="all", choices=["all", "dev", "test", "gen"])
+    ap.add_argument("--with-generated", action="store_true",
+                    help="also use eval/generated.jsonl (python scripts/make_eval_set.py)")
     ap.add_argument("--retriever", default=None)
     ap.add_argument("--sweep", action="store_true")
     ap.add_argument("--llm", action="store_true",
@@ -157,7 +159,7 @@ def main():
     if a.sweep:
         return sweep(ret, "dev" if a.split == "all" else a.split)
 
-    qs = load(a.split)
+    qs = load(a.split, ("questions.jsonl", "generated.jsonl") if a.with_generated or a.split == "gen" else ("questions.jsonl",))
     results, passed = [], 0
     for q in qs:
         r = answer(q["question"], retriever=ret, use_llm=a.llm)
@@ -182,7 +184,7 @@ def main():
     print(f"\n=== {len(qs)} questions, split={a.split}, retriever={ret.name}, threshold={retrieve.threshold(ret.name)} ===")
     print(f"overall pass                : {passed}/{len(qs)}")
     print(f"routing (intent) accuracy   : {rate(lambda x: x[4].get('intent_ok', False), ans)}")
-    print(f"root accuracy               : {rate(lambda x: x[4].get('roots_ok', False), [y for y in ans if y[0]['type'] in ('single_root','compare','concept')])}")
+    print(f"root accuracy               : {rate(lambda x: x[4].get('roots_ok', False), [y for y in ans if y[0]['type'] in ('single_root','meaning','compare','concept')])}")
     print(f"citation validity (roots)   : {sum(x[4].get('cit_valid', 0) for x in root_q)}/{sum(x[4].get('cit_total', 0) for x in root_q)} cited ayahs exist and contain the root")
     if sem_q:
         print(f"semantic hit@{retrieve.TOP_K}            : {rate(lambda x: x[4].get('hit'), sem_q)}   mean precision {sum(x[4]['precision'] for x in sem_q)/len(sem_q):.2f}")
