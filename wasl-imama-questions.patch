@@ -1,0 +1,54 @@
+diff --git a/eval/questions.jsonl b/eval/questions.jsonl
+index 0d7d89b..954c19f 100644
+--- a/eval/questions.jsonl
++++ b/eval/questions.jsonl
+@@ -82,3 +82,49 @@
+ {"id": "n20", "type": "no_match", "question": "Tell me a joke.", "split": "dev", "expect": {"refused": true}}
+ {"id": "n21", "type": "no_match", "question": "What is the Arabic root of the English word computer?", "split": "dev", "expect": {"refused": true}}
+ {"id": "n22", "type": "no_match", "question": "Which ayah talks about Pharaoh?", "split": "dev", "expect": {"refused": true}}
++{"id": "i01", "type": "semantic", "question": "What does kingship and supreme authority look like in this surah?", "split": "test", "expect": {"relevant": [1]}}
++{"id": "i02", "type": "semantic", "question": "What does it mean that the One with supreme authority is full of blessing?", "split": "test", "expect": {"relevant": [1]}}
++{"id": "i03", "type": "semantic", "question": "How does the phrase \"in whose hands\" describe control in the opening verse?", "split": "test", "expect": {"relevant": [1]}}
++{"id": "i04", "type": "semantic", "question": "What does the surah say about the sky being built in layers without flaws?", "split": "test", "expect": {"relevant": [3, 4]}}
++{"id": "i05", "type": "semantic", "question": "What does the verse say about shooting stars or lamps being used against devils?", "split": "test", "expect": {"relevant": [5]}}
++{"id": "i06", "type": "semantic", "question": "What does the surah say about keeping speech secret versus speaking aloud?", "split": "test", "expect": {"relevant": [13]}}
++{"id": "i07", "type": "semantic", "question": "Which verse talks about being given hearing, sight, and hearts so people can be thankful?", "split": "test", "expect": {"relevant": [23]}}
++{"id": "i08", "type": "semantic", "question": "When people ask when \"the promise\" will happen, what event is the surah referring to?", "split": "test", "expect": {"relevant": [25]}}
++{"id": "i09", "type": "semantic", "question": "Which verses describe punishment or torment in this surah?", "split": "test", "expect": {"relevant": [5, 6, 7, 8, 10, 11, 16, 17, 27, 28]}}
++{"id": "i10", "type": "semantic", "question": "Which verses mention Allah showing mercy or granting relief?", "split": "test", "expect": {"relevant": [12, 14, 15, 19, 20, 21, 29]}}
++{"id": "i11", "type": "semantic", "question": "Which verses highlight complete control and authority over everything?", "split": "test", "expect": {"relevant": [1, 14, 15, 16, 17, 18, 19, 20, 21, 28]}}
++{"id": "i12", "type": "semantic", "question": "What does this surah say about gratefulness?", "split": "test", "expect": {"relevant": [23]}}
++{"id": "i13", "type": "out_of_scope", "question": "What are the virtues of reciting Surah Al-Mulk?", "split": "test", "expect": {"refused": true}}
++{"id": "i14", "type": "out_of_scope", "question": "Where does it say that Surah Al-Mulk should be recited every night?", "split": "test", "expect": {"refused": true}}
++{"id": "i15", "type": "out_of_scope", "question": "Will I not be saved on youm Al-Qiyama if i dont recite this Surah every night", "split": "test", "expect": {"refused": true}}
++{"id": "i16", "type": "out_of_scope", "question": "Why did Allah not tell anybody when the final hour will happen?", "split": "test", "expect": {"refused": true}}
++{"id": "i17", "type": "out_of_scope", "question": "How do the verses about the sky relate to a person's everyday life and choices?", "split": "test", "expect": {"refused": true}}
++{"id": "i18", "type": "out_of_scope", "question": "Is music haram in islam", "split": "test", "expect": {"refused": true}}
++{"id": "i19", "type": "out_of_scope", "question": "Is it allowed for a woman to travel alone", "split": "test", "expect": {"refused": true}}
++{"id": "i20", "type": "out_of_scope", "question": "What is the fatwa on Zakat", "split": "test", "expect": {"refused": true}}
++{"id": "i21", "type": "no_match", "question": "Does the word for flaw or discrepancy relate to the Urdu word faut?", "split": "test", "expect": {"refused": true}}
++{"id": "i22", "type": "no_match", "question": "Is the word for holding birds in the air related to the Urdu word maskan?", "split": "test", "expect": {"refused": true}}
++{"id": "i23", "type": "no_match", "question": "Which roots repeat the most in Surah Al-Mulk and what ideas appear with them?", "split": "test", "expect": {"refused": true}}
++{"id": "i24", "type": "no_match", "question": "How is the root Reham used across the Quran", "split": "test", "expect": {"refused": true}}
++{"id": "i25", "type": "no_match", "question": "How does imagery of Jahannum differ between Surah Al-Mulk and Surah Al-Rehman", "split": "test", "expect": {"refused": true}}
++{"id": "i26", "type": "no_match", "question": "What does Surah Al-Mulk say about relations with people", "split": "test", "expect": {"refused": true}}
++{"id": "i27", "type": "no_match", "question": "How important is it to cook food at home in islam", "split": "test", "expect": {"refused": true}}
++{"id": "i28", "type": "no_match", "question": "Recipe of beef burger", "split": "test", "expect": {"refused": true}}
++{"id": "i29", "type": "no_match", "question": "What does Quran say about divorce", "split": "test", "expect": {"refused": true}}
++{"id": "i30", "type": "no_match", "question": "What does the name 'Ammara' mean", "split": "test", "expect": {"refused": true}}
++{"id": "i31", "type": "no_match", "question": "Story of Imam Malik", "split": "test", "expect": {"refused": true}}
++{"id": "i32", "type": "no_match", "question": "Stories of Prophet SAW relating to Surah Al-Mulk", "split": "test", "expect": {"refused": true}}
++{"id": "i33", "type": "no_match", "question": "How would Prophet SAW treat his wives", "split": "test", "expect": {"refused": true}}
++{"id": "i34", "type": "no_match", "question": "How does Surah Al-Mulk relate to Surah Yaseen", "split": "test", "expect": {"refused": true}}
++{"id": "i35", "type": "single_root", "question": "what root gives \"mubtala\" / \"balaa\" in this surah, and is it a hollow or sound root?", "split": "test", "expect": {"roots": ["بلو"]}}
++{"id": "i36", "type": "single_root", "question": "difference between mustaqeem and qiyamat root-wise", "split": "test", "expect": {"roots": ["قوم"]}}
++{"id": "i37", "type": "single_root", "question": "sawaat ka root kya banta hai, s-w-t ya s-w-y?", "split": "test", "expect": {"roots": ["سوي"]}}
++{"id": "i38", "type": "compare", "question": "tafawut aur futoor mein kya root link hai ya dono alag roots hain?", "split": "test", "expect": {"roots": ["فوت", "فطر"]}}
++{"id": "i39", "type": "meaning", "question": "What does رأي  mean?", "split": "test", "expect": {"roots": ["رأي"]}}
++{"id": "i40", "type": "meaning", "question": "What does كون  mean and in what forms does it appear?", "split": "test", "expect": {"roots": ["كون"]}}
++{"id": "i41", "type": "compare", "question": "Difference between سمو  and سمع ?", "split": "test", "expect": {"roots": ["سمو", "سمع"]}}
++{"id": "i42", "type": "meaning", "question": "Meaning of مشي ?", "split": "test", "expect": {"roots": ["مشي"]}}
++{"id": "i43", "type": "meaning", "question": "Meaning of جند ?", "split": "test", "expect": {"roots": ["جند"]}}
++{"id": "i44", "type": "meaning", "question": "What does biyadih mean? How does it translate to 'in whose hands'?", "split": "test", "expect": {"roots": ["يدي"]}}
++{"id": "i45", "type": "meaning", "question": "What does Jahar mean?", "split": "test", "expect": {"roots": ["جهر"]}}
++{"id": "i46", "type": "meaning", "question": "What does Tibaka mean?", "split": "test", "expect": {"roots": ["طبق"]}}
