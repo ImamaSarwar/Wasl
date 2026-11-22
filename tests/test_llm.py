@@ -158,7 +158,11 @@ class TestVerify(unittest.TestCase):
         self.assertTrue(any("ayah 25" in e for e in errs))
 
     def test_no_citation(self):
-        self.assertTrue(any("cites no ayah" in e for e in self.check(self.with_(answer='"created"'))))
+        self.assertTrue(any("cites no ayah" in e for e in self.check(self.with_(answer='"created"', claims=[]))))
+
+    def test_claims_count_as_citations(self):
+        # a reply that names its ayah in a structured claim, not in the prose, is still cited
+        self.assertEqual(self.check(self.with_(answer='"created" is used here')), [])
 
     def test_claim_root_not_in_that_ayah(self):
         bad = self.with_(claims=[{"ayah": 14, "root": "علم", "lemma": "عَلِمَ", "gloss": "know"}])

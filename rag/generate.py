@@ -20,6 +20,9 @@ RULES
 4. Never give rulings (halal/haram), theology, personal interpretation, or tafsir. If the question asks for them, refuse.
 5. If you state a count, it must be exactly a number given in the evidence.
 6. Be brief: at most 4 sentences. Plain English.
+7. If the QUESTION TYPE is semantic, the evidence is the few ayahs closest in meaning to the question, found by search, and some of them may be unrelated. Answer from the ayahs that relate to the question and cite them. Refuse only when none of the listed ayahs relates to the question at all.
+8. Always cite at least one ayah like [67:3] in the answer text.
+9. Some questions also list "ALSO CLOSE IN MEANING" ayahs, found by search. Use them when they answer the question; ignore them when they do not.
 
 Reply with JSON only, in this shape:
 {"refuse": false,
@@ -35,8 +38,16 @@ def _label(root):
     return f"{root} ({lat})" if lat else root
 
 
-def format_evidence(intent, evidence):
-    """Plain-text evidence block. `evidence` = list of root evidences, or list of ayah dicts (semantic)."""
+def _extra_lines(extra):
+    if not extra:
+        return []
+    return ["ALSO CLOSE IN MEANING TO THE QUESTION (found by search; some may be unrelated):"] + \
+        [f"[67:{a['ayah']}] translation: {a['translation']}" for a in extra]
+
+
+def format_evidence(intent, evidence, extra=None):
+    """Plain-text evidence block. `evidence` = list of root evidences, or list of ayah dicts (semantic).
+    `extra` = ayahs found by meaning search that go with a root-based answer (topic-word questions)."""
     if intent == "semantic":
         lines = ["AYAHS (closest in meaning to the question; no root was named):"]
         lines += [f"[67:{a['ayah']}] translation: {a['translation']}" for a in evidence]
@@ -59,7 +70,7 @@ def format_evidence(intent, evidence):
         lines.append(f"[67:{n}] translation: {by_ayah[n]['translation']}")
         for root, h in by_ayah[n]["hits"]:
             lines.append(f'    word {h["word"]} | root {root} | lemma {h["lemma"]} | meaning "{h.get("gloss") or ""}"')
-    return "\n".join(lines)
+    return "\n".join(lines + _extra_lines(extra))
 
 
 def _matched_line(matched):
@@ -69,20 +80,20 @@ def _matched_line(matched):
     return ("MATCHED: " + "; ".join(items)) if items else None
 
 
-def build_user_prompt(question, intent, evidence, previous_errors=None, matched=None):
+def build_user_prompt(question, intent, evidence, previous_errors=None, matched=None, extra=None):
     parts = [f"QUESTION: {question}", f"QUESTION TYPE: {intent}"]
     if _matched_line(matched):
         parts.append(_matched_line(matched))
-    parts += ["", "EVIDENCE (the only facts you may use):", format_evidence(intent, evidence)]
+    parts += ["", "EVIDENCE (the only facts you may use):", format_evidence(intent, evidence, extra)]
     if previous_errors:
         parts += ["", "YOUR PREVIOUS ANSWER FAILED AUTOMATIC CHECKS. Fix every problem and answer again:"]
         parts += [f"- {e}" for e in previous_errors]
     return "\n".join(parts)
 
 
-def ask(question, intent, evidence, previous_errors=None, matched=None, **llm_kwargs):
+def ask(question, intent, evidence, previous_errors=None, matched=None, extra=None, **llm_kwargs):
     """Returns the model's raw reply text (JSON as a string). Raises llm.LLMError on failure."""
-    return llm.generate_json(SYSTEM, build_user_prompt(question, intent, evidence, previous_errors, matched),
+    return llm.generate_json(SYSTEM, build_user_prompt(question, intent, evidence, previous_errors, matched, extra),
                              **llm_kwargs)
 
 

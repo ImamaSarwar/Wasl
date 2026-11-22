@@ -1,0 +1,987 @@
+diff --git a/eval/metrics.py b/eval/metrics.py
+new file mode 100644
+index 0000000..f3e34bf
+--- /dev/null
++++ b/eval/metrics.py
+@@ -0,0 +1,88 @@
++"""
++Numbers for the evaluation write-up: confidence intervals, latency, token cost, and a grouped error analysis.
++Pure functions (no network, no database), so they are easy to test.
++"""
++import math
++import random
++
++REFUSE_TYPES = {"out_of_scope", "no_match"}
++ROOT_TYPES = {"single_root", "meaning", "compare", "concept"}
++
++
++def wilson(k, n, z=1.96):
++    """95% Wilson interval for a rate k/n. Returns (low, high); (nan, nan) when n == 0."""
++    if n == 0:
++        return float("nan"), float("nan")
++    p = k / n
++    d = 1 + z * z / n
++    centre = (p + z * z / (2 * n)) / d
++    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
++    return max(0.0, centre - half), min(1.0, centre + half)
++
++
++def bootstrap_mean(xs, resamples=2000, seed=0):
++    """(mean, low, high) with a seeded percentile bootstrap, for averages such as precision."""
++    xs = list(xs)
++    if not xs:
++        return float("nan"), float("nan"), float("nan")
++    rng = random.Random(seed)
++    means = sorted(sum(rng.choice(xs) for _ in xs) / len(xs) for _ in range(resamples))
++    return sum(xs) / len(xs), means[int(0.025 * resamples)], means[int(0.975 * resamples) - 1]
++
++
++def percentile(xs, p):
++    xs = sorted(xs)
++    if not xs:
++        return float("nan")
++    k = (len(xs) - 1) * p / 100
++    lo, hi = math.floor(k), math.ceil(k)
++    return xs[lo] + (xs[hi] - xs[lo]) * (k - lo)
++
++
++def cost_usd(tokens_in, tokens_out, price_in_per_m, price_out_per_m):
++    """Cost of a call. Prices are USD per million tokens and are supplied by the user, never assumed."""
++    return tokens_in * price_in_per_m / 1e6 + tokens_out * price_out_per_m / 1e6
++
++
++def classify_failure(q, rec, truth=None):
++    """
++    Why did this question go wrong? Returns a cause string, or None when the answer is acceptable.
++    `rec` is one per-question record from run_baselines (refused, intent, roots, cited, generated_by, ...).
++    """
++    t = q["type"]
++    if t in REFUSE_TYPES:
++        if rec["refused"]:
++            return None
++        return f"should refuse but answered (through the {rec.get('intent') or 'unknown'} path)"
++    if rec["refused"]:
++        if rec.get("generated_by") == "llm":
++            return "the LLM refused although evidence was retrieved"
++        if t == "semantic":
++            return "refused before the LLM: best similarity below the threshold (or an unrelated route)"
++        return "refused before the LLM: the word or root was not recognised"
++    cited = set(rec.get("cited") or [])
++    expected_roots = q["expect"].get("roots")
++    if expected_roots is not None and t != "concept" and rec.get("roots") is not None:
++        if not rec["roots"]:
++            return "the word or root was not recognised (fell through to semantic search)"
++        if set(rec["roots"]) != set(expected_roots):
++            return "wrong root resolved"
++    if t == "concept":   # a topic word legitimately brings in more than one root, so only a total miss counts
++        return None if truth is None or cited & set(truth) else "the right ayah was not cited"
++    if t == "semantic":
++        if truth is not None and not (cited & set(truth)):
++            via = rec.get("intent")
++            return "the right ayah was not cited" + (f" (answered through the {via} path)" if via != "semantic" else
++                                                      " (retrieval missed it)")
++        return None
++    if truth is not None and cited and not cited <= set(truth):
++        return "cited an ayah that does not contain the root"
++    return None
++
++
++def group_failures(failures):
++    """[(cause, id, question)] -> {cause: [(id, question), ...]} ordered by size."""
++    groups = {}
++    for cause, qid, text in failures:
++        groups.setdefault(cause, []).append((qid, text))
++    return dict(sorted(groups.items(), key=lambda kv: -len(kv[1])))
+diff --git a/eval/run_baselines.py b/eval/run_baselines.py
+index 498647c..7ae0751 100644
+--- a/eval/run_baselines.py
++++ b/eval/run_baselines.py
+@@ -19,6 +19,7 @@ Replies are cached in .llm_cache/, so re-running costs no quota.
+ """
+ import argparse
+ import json
++import os
+ import re
+ import sys
+ import time
+@@ -34,6 +35,7 @@ from rag.pipeline import answer  # noqa: E402
+ from rag.resolve import resolve  # noqa: E402
+ 
+ sys.path.insert(0, str(ROOT / "eval"))
++from metrics import (bootstrap_mean, classify_failure, cost_usd, group_failures, percentile, wilson)  # noqa: E402
+ from run_eval import load  # noqa: E402
+ 
+ ROOT_TYPES = {"single_root", "meaning", "compare", "concept"}
+@@ -66,14 +68,19 @@ def sys_prompt_only(q, ctx):
+         raw = llm.generate_json(PROMPT_ONLY_SYSTEM, q["question"], config=ctx["cfg"])
+     except llm.LLMError as e:
+         return {"refused": False, "cited": set(), "text": "", "error": str(e)}
++    c = llm.LAST_CALL
++    usage = {"calls": 1, "latency": c["latency"], "cached_latency": c["latency"] if c["cached"] else 0.0,
++             "tokens_in": c["tokens_in"], "tokens_out": c["tokens_out"],
++             "unmeasured": 0 if c.get("measured", True) else 1}
+     data = generate.parse(raw)
+     if not data:
+-        return {"refused": False, "cited": set(), "text": raw, "error": None}
++        return {"refused": False, "cited": set(), "text": raw, "error": None, "usage": usage}
+     cited = set(verify.cited_ayahs({"answer": data.get("answer", ""), "claims": []}))
+     for n in data.get("ayahs") or []:
+         if isinstance(n, int):
+             cited.add(n)
+-    return {"refused": bool(data.get("refuse")), "cited": cited, "text": data.get("answer", ""), "error": None}
++    return {"refused": bool(data.get("refuse")), "cited": cited, "text": data.get("answer", ""), "error": None,
++            "usage": usage}
+ 
+ 
+ def sys_semantic_only(q, ctx):
+@@ -97,7 +104,8 @@ def _pipeline(use_llm):
+         err = r.get("llm_error")
+         return {"refused": r["refused"], "cited": set(r["citations"]), "text": r["answer"], "error": err,
+                 "generated_by": r.get("generated_by"), "reason": r.get("llm_reason"),
+-                "verification_errors": r.get("verification_errors")}
++                "verification_errors": r.get("verification_errors"), "intent": r.get("intent"),
++                "roots": r.get("roots"), "usage": r.get("llm_stats")}
+     return run
+ 
+ 
+@@ -145,6 +153,99 @@ def report(name, rows):
+             f"| {sum(s['ok'] for s in ref):>3}/{len(ref):<3} | {sum(s['refused'] for s in ans):>3}/{len(ans):<3}")
+ 
+ 
++def _fmt(rate, lo, hi):
++    return f"{rate:.2f} [{lo:.2f}-{hi:.2f}]"
++
++
++def summarise(qs, results, raw, ctx):
++    """Every number the slides need, with 95% intervals. Prices come from the environment, never assumed."""
++    price_in = float(os.environ.get("LLM_PRICE_IN_PER_M", "nan"))
++    price_out = float(os.environ.get("LLM_PRICE_OUT_PER_M", "nan"))
++    by_id = {q["id"]: q for q in qs}
++    out = {"questions": len(qs), "retriever": ctx["ret"].name,
++           "threshold": retrieve.threshold(ctx["ret"].name),
++           "model": ctx["cfg"].model if ctx["cfg"] else None,
++           "by_type": {t: sum(1 for q in qs if q["type"] == t) for t in sorted({q["type"] for q in qs})},
++           "systems": {}}
++    for name, (rows, errors) in results.items():
++        root = [s for s in rows if s["kind"] == "root"]
++        sem = [s for s in rows if s["kind"] == "sem"]
++        ref = [s for s in rows if s["kind"] == "refuse"]
++        ans = root + sem
++        cs = [s for s in root if s["count_stated"]]
++        recs = raw[name]
++        lat = [r["latency_s"] for r in recs if r["measured"]]
++        llm_all = [r for r in recs if r["llm_calls"]]
++        llm_recs = [r for r in llm_all if r["measured"]]   # replies cached before timing existed have no numbers
++        tin = sum(r["tokens_in"] for r in llm_recs)
++        tout = sum(r["tokens_out"] for r in llm_recs)
++        entry = {
++            "root_precision": bootstrap_mean([s["precision"] for s in root]),
++            "root_recall": bootstrap_mean([s["recall"] for s in root]),
++            "meaning_hit": [sum(s["hit"] for s in sem), len(sem), *wilson(sum(s["hit"] for s in sem), len(sem))],
++            "counts_right": [sum(s["count_ok"] for s in cs), len(cs), *wilson(sum(s["count_ok"] for s in cs), len(cs))],
++            "refusals_ok": [sum(s["ok"] for s in ref), len(ref), *wilson(sum(s["ok"] for s in ref), len(ref))],
++            "false_refusals": [sum(s["refused"] for s in ans), len(ans),
++                               *wilson(sum(s["refused"] for s in ans), len(ans))],
++            "latency_median_s": percentile(lat, 50), "latency_p95_s": percentile(lat, 95),
++            "llm_calls": sum(r["llm_calls"] for r in recs),
++            "llm_questions": len(llm_all), "llm_questions_measured": len(llm_recs),
++            "tokens_in": tin, "tokens_out": tout,
++            "tokens_per_llm_question": (tin + tout) / len(llm_recs) if llm_recs else 0,
++            "cost_usd_total": cost_usd(tin, tout, price_in, price_out) if price_in == price_in and price_out == price_out else None,
++            "provider_errors": errors,
++        }
++        if entry["cost_usd_total"] is not None and llm_recs:
++            entry["cost_usd_per_llm_question"] = entry["cost_usd_total"] / len(llm_recs)
++        gen = [r for r in recs if r.get("generated_by")]
++        if gen:
++            entry["llm_verified"] = sum(1 for r in gen if r["generated_by"] == "llm")
++            entry["fell_back_to_database"] = sum(1 for r in gen if r["generated_by"] == "template")
++        out["systems"][name] = entry
++    return out
++
++
++def print_summary(sm):
++    print("\nWith 95% intervals (precision and recall: bootstrap; rates: Wilson):")
++    for name, e in sm["systems"].items():
++        print(f"  {name}")
++        print(f"    root precision {_fmt(*e['root_precision'])}   recall {_fmt(*e['root_recall'])}")
++        for label, key in (("meaning-search hit", "meaning_hit"), ("counts right", "counts_right"),
++                           ("refusals correct", "refusals_ok"), ("false refusals", "false_refusals")):
++            k, n, lo, hi = e[key]
++            if n:
++                print(f"    {label}: {k}/{n} = {_fmt(k / n, lo, hi)}")
++        ms = lambda v: f"{v * 1000:.0f} ms" if v < 1 else f"{v:.2f} s"
++        print(f"    latency per question: median {ms(e['latency_median_s'])}, 95th percentile {ms(e['latency_p95_s'])}")
++        if e["llm_calls"]:
++            cost = (f", cost ${e['cost_usd_total']:.4f} in total" if e["cost_usd_total"] is not None
++                    else " (set LLM_PRICE_IN_PER_M and LLM_PRICE_OUT_PER_M to see cost)")
++            print(f"    LLM: {e['llm_calls']} calls, {e['tokens_in']} tokens in, {e['tokens_out']} out{cost}")
++            if e["llm_questions_measured"] < e["llm_questions"]:
++                print(f"    (latency and tokens cover {e['llm_questions_measured']} of {e['llm_questions']} LLM questions; "
++                      f"older cached replies have no timing. Delete .llm_cache to measure all, using quota.)")
++
++
++def error_analysis(qs, raw, system):
++    """Group the failures of one system by cause (resolver, threshold, LLM refusal, gate gap, ...)."""
++    by_id = {q["id"]: q for q in qs}
++    failures = []
++    for rec in raw[system]:
++        q = by_id[rec["id"]]
++        cause = classify_failure(q, rec, truth_ayahs(q) if q["type"] in ROOT_TYPES | {"semantic"} else None)
++        if cause:
++            failures.append((cause, q["id"], q["question"]))
++    groups = group_failures(failures)
++    total = len(failures)
++    print(f"\nError analysis for {system}: {total} failures in {len(groups)} groups")
++    for cause, items in groups.items():
++        print(f"  {len(items):>3}  {cause}")
++        for qid, text in items[:3]:
++            print(f"         {qid}: {text[:90]}")
++    return {"system": system, "failures": total,
++            "groups": {c: [{"id": i, "question": t} for i, t in items] for c, items in groups.items()}}
++
++
+ def main():
+     ap = argparse.ArgumentParser()
+     ap.add_argument("--retriever", default=None)
+@@ -152,6 +253,9 @@ def main():
+     ap.add_argument("--generated-sample", type=int, default=0, metavar="N",
+                     help="with --with-generated: use only N of the generated questions (evenly spread), "
+                          "to save LLM quota")
++    ap.add_argument("--only", nargs="*", default=None, metavar="TYPE",
++                    help="use only these question types, e.g. --only semantic out_of_scope no_match "
++                         "(saves LLM quota when you are testing one part)")
+     ap.add_argument("--systems", nargs="*", default=ALL_SYSTEMS, choices=ALL_SYSTEMS)
+     ap.add_argument("--no-llm", action="store_true", help="skip the systems that call the LLM")
+     ap.add_argument("--delay", type=float, default=3.0)
+@@ -160,6 +264,8 @@ def main():
+     systems = [s for s in a.systems if not (a.no_llm and s in USES_LLM)]
+     files = ("questions.jsonl", "generated.jsonl") if a.with_generated else ("questions.jsonl",)
+     qs = load("all", files)
++    if a.only:
++        qs = [q for q in qs if q["type"] in a.only]
+     if a.generated_sample:
+         gen = [q for q in qs if q["split"] == "gen"]
+         keep = {q["id"] for q in gen[::max(1, len(gen) // a.generated_sample)][:a.generated_sample]}
+@@ -172,7 +278,12 @@ def main():
+     for name in systems:
+         rows, errors, streak = [], 0, 0
+         for i, q in enumerate(qs, 1):
++            t0 = time.perf_counter()
+             out = SYSTEMS[name](q, ctx)
++            wall = time.perf_counter() - t0
++            usage = out.get("usage") or {}
++            # a cached reply costs no time now, so add back the time it took when it was first made
++            latency = wall + usage.get("cached_latency", 0.0)
+             if out.get("error"):
+                 errors, streak = errors + 1, streak + 1
+                 if streak >= 3 and name in USES_LLM:
+@@ -184,7 +295,13 @@ def main():
+             raw.setdefault(name, []).append({"id": q["id"], "type": q["type"], "refused": out["refused"],
+                                              "cited": sorted(out["cited"]), "generated_by": out.get("generated_by"),
+                                              "error": out.get("error"), "reason": out.get("reason"),
+-                                             "verification_errors": out.get("verification_errors")})
++                                             "verification_errors": out.get("verification_errors"),
++                                             "intent": out.get("intent"), "roots": out.get("roots"),
++                                             "latency_s": round(latency, 3),
++                                             "llm_calls": usage.get("calls", 0),
++                                             "measured": not usage.get("unmeasured", 0),
++                                             "tokens_in": usage.get("tokens_in", 0),
++                                             "tokens_out": usage.get("tokens_out", 0)})
+             if name in USES_LLM:
+                 time.sleep(a.delay)
+             if i % 20 == 0:
+@@ -199,6 +316,15 @@ def main():
+     print("-" * 96)
+     for name, (rows, errors) in results.items():
+         print(report(name, rows) + (f"   [{errors} provider errors]" if errors else ""))
++    summary = summarise(qs, results, raw, ctx)
++    print_summary(summary)
++    focus = next((n for n in ("hybrid_llm", "hybrid_db") if n in raw), list(raw)[-1])
++    errors_by_cause = error_analysis(qs, raw, focus)
++    out_dir = ROOT / "eval" / "results"
++    out_dir.mkdir(exist_ok=True)
++    (out_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
++    (out_dir / "error_analysis.json").write_text(json.dumps(errors_by_cause, ensure_ascii=False, indent=1),
++                                                 encoding="utf-8")
+     if "hybrid_llm" in raw:
+         text = {q["id"]: q["question"] for q in qs}
+         bad = [x for x in raw["hybrid_llm"]
+diff --git a/rag/generate.py b/rag/generate.py
+index 476b475..5bcf3f3 100644
+--- a/rag/generate.py
++++ b/rag/generate.py
+@@ -20,6 +20,9 @@ RULES
+ 4. Never give rulings (halal/haram), theology, personal interpretation, or tafsir. If the question asks for them, refuse.
+ 5. If you state a count, it must be exactly a number given in the evidence.
+ 6. Be brief: at most 4 sentences. Plain English.
++7. If the QUESTION TYPE is semantic, the evidence is the few ayahs closest in meaning to the question, found by search, and some of them may be unrelated. Answer from the ayahs that relate to the question and cite them. Refuse only when none of the listed ayahs relates to the question at all.
++8. Always cite at least one ayah like [67:3] in the answer text.
++9. Some questions also list "ALSO CLOSE IN MEANING" ayahs, found by search. Use them when they answer the question; ignore them when they do not.
+ 
+ Reply with JSON only, in this shape:
+ {"refuse": false,
+@@ -35,8 +38,16 @@ def _label(root):
+     return f"{root} ({lat})" if lat else root
+ 
+ 
+-def format_evidence(intent, evidence):
+-    """Plain-text evidence block. `evidence` = list of root evidences, or list of ayah dicts (semantic)."""
++def _extra_lines(extra):
++    if not extra:
++        return []
++    return ["ALSO CLOSE IN MEANING TO THE QUESTION (found by search; some may be unrelated):"] + \
++        [f"[67:{a['ayah']}] translation: {a['translation']}" for a in extra]
++
++
++def format_evidence(intent, evidence, extra=None):
++    """Plain-text evidence block. `evidence` = list of root evidences, or list of ayah dicts (semantic).
++    `extra` = ayahs found by meaning search that go with a root-based answer (topic-word questions)."""
+     if intent == "semantic":
+         lines = ["AYAHS (closest in meaning to the question; no root was named):"]
+         lines += [f"[67:{a['ayah']}] translation: {a['translation']}" for a in evidence]
+@@ -59,7 +70,7 @@ def format_evidence(intent, evidence):
+         lines.append(f"[67:{n}] translation: {by_ayah[n]['translation']}")
+         for root, h in by_ayah[n]["hits"]:
+             lines.append(f'    word {h["word"]} | root {root} | lemma {h["lemma"]} | meaning "{h.get("gloss") or ""}"')
+-    return "\n".join(lines)
++    return "\n".join(lines + _extra_lines(extra))
+ 
+ 
+ def _matched_line(matched):
+@@ -69,20 +80,20 @@ def _matched_line(matched):
+     return ("MATCHED: " + "; ".join(items)) if items else None
+ 
+ 
+-def build_user_prompt(question, intent, evidence, previous_errors=None, matched=None):
++def build_user_prompt(question, intent, evidence, previous_errors=None, matched=None, extra=None):
+     parts = [f"QUESTION: {question}", f"QUESTION TYPE: {intent}"]
+     if _matched_line(matched):
+         parts.append(_matched_line(matched))
+-    parts += ["", "EVIDENCE (the only facts you may use):", format_evidence(intent, evidence)]
++    parts += ["", "EVIDENCE (the only facts you may use):", format_evidence(intent, evidence, extra)]
+     if previous_errors:
+         parts += ["", "YOUR PREVIOUS ANSWER FAILED AUTOMATIC CHECKS. Fix every problem and answer again:"]
+         parts += [f"- {e}" for e in previous_errors]
+     return "\n".join(parts)
+ 
+ 
+-def ask(question, intent, evidence, previous_errors=None, matched=None, **llm_kwargs):
++def ask(question, intent, evidence, previous_errors=None, matched=None, extra=None, **llm_kwargs):
+     """Returns the model's raw reply text (JSON as a string). Raises llm.LLMError on failure."""
+-    return llm.generate_json(SYSTEM, build_user_prompt(question, intent, evidence, previous_errors, matched),
++    return llm.generate_json(SYSTEM, build_user_prompt(question, intent, evidence, previous_errors, matched, extra),
+                              **llm_kwargs)
+ 
+ 
+diff --git a/rag/llm.py b/rag/llm.py
+index 976eaa0..5b9a1ba 100644
+--- a/rag/llm.py
++++ b/rag/llm.py
+@@ -119,12 +119,32 @@ def _http_transport(url, headers, body, timeout=60):
+         raise LLMError(f"could not reach the provider: {type(e).__name__}") from None
+ 
+ 
++# What the most recent generate_json call cost: latency in seconds, tokens, and whether it came from the
++# disk cache (a cache hit reports the numbers recorded when the call was first made).
++LAST_CALL = {"latency": 0.0, "tokens_in": 0, "tokens_out": 0, "cached": False, "measured": True}
++
++
++def _usage(provider, data):
++    """(tokens_in, tokens_out) from a provider reply, 0 when it does not say."""
++    if provider == "gemini":
++        u = data.get("usageMetadata") or {}
++        tin = int(u.get("promptTokenCount") or 0)
++        total = int(u.get("totalTokenCount") or 0)
++        return tin, (total - tin if total else int(u.get("candidatesTokenCount") or 0))
++    u = data.get("usage") or {}
++    return int(u.get("prompt_tokens") or 0), int(u.get("completion_tokens") or 0)
++
++
+ _HINTS = {
+     400: "bad request - often a wrong model name or an unsupported option",
+     401: "the API key was rejected - check LLM_API_KEY in .env",
+     403: "the key is not allowed to use this model/region - check the key and model",
+     404: "model not found - check LLM_MODEL (copy the exact id from AI Studio)",
+     429: "rate limit reached - wait a minute, or use a lighter model (gemini-3.5-flash-lite)",
++    500: "the provider had an internal error - retry in a minute or switch LLM_MODEL",
++    502: "the provider is busy or down - retry in a minute or switch LLM_MODEL",
++    503: "the provider is busy or down - retry in a minute or switch LLM_MODEL",
++    504: "the provider timed out - retry in a minute or switch LLM_MODEL",
+ }
+ 
+ 
+@@ -140,20 +160,30 @@ def generate_json(system, user, *, config=None, transport=None, use_cache=True,
+                                           ensure_ascii=False).encode("utf-8")).hexdigest()
+     cache_file = CACHE_DIR / f"{cache_key}.json"
+     if use_cache and cache_file.exists():
+-        return json.loads(cache_file.read_text(encoding="utf-8"))["text"]
++        hit = json.loads(cache_file.read_text(encoding="utf-8"))
++        # replies cached before timing was recorded carry no numbers: flag them instead of reporting zeros
++        LAST_CALL.update(latency=hit.get("latency", 0.0), tokens_in=hit.get("tokens_in", 0),
++                         tokens_out=hit.get("tokens_out", 0), cached=True, measured="latency" in hit)
++        return hit["text"]
+ 
+     url, headers, body = _request_parts(cfg, system, user, temperature)
+     last = ""
++    started = time.perf_counter()
+     for attempt in range(max_retries):
+         status, text = transport(url, headers, body)
+         if status == 200:
+             try:
+-                reply = _extract_text(cfg, json.loads(text))
++                parsed = json.loads(text)
++                reply = _extract_text(cfg, parsed)
+             except json.JSONDecodeError:
+                 raise LLMError("the provider did not return valid JSON") from None
++            tin, tout = _usage(cfg.provider, parsed)
++            latency = round(time.perf_counter() - started, 3)
++            LAST_CALL.update(latency=latency, tokens_in=tin, tokens_out=tout, cached=False, measured=True)
+             if use_cache:
+                 CACHE_DIR.mkdir(exist_ok=True)
+-                cache_file.write_text(json.dumps({"model": cfg.model, "text": reply}, ensure_ascii=False),
++                cache_file.write_text(json.dumps({"model": cfg.model, "text": reply, "latency": latency,
++                                                  "tokens_in": tin, "tokens_out": tout}, ensure_ascii=False),
+                                       encoding="utf-8")
+             return reply
+         last = f"HTTP {status}: {_HINTS.get(status, 'provider error')}"
+diff --git a/rag/pipeline.py b/rag/pipeline.py
+index e62acaa..4d7b9ec 100644
+--- a/rag/pipeline.py
++++ b/rag/pipeline.py
+@@ -128,20 +128,27 @@ def _refuse(message, intent, roots=()):
+             "intent": intent, "roots": list(roots), "evidence": None}
+ 
+ 
+-def _semantic(q, retriever=None, threshold=None):
+-    """No root named: find ayahs by meaning. Refuse if even the best match is too weak."""
++def _semantic(q, retriever=None, threshold=None, use_llm=False):
++    """
++    No root named: find ayahs by meaning. Refuse if even the best match is too weak.
++    With an LLM the weak-but-not-hopeless band (retrieve.THRESHOLDS_LOW up to the threshold) is let through,
++    marked "borderline", so the LLM can judge the candidates; answer() refuses it if the LLM cannot.
++    """
+     ret = retriever or retrieve.get_retriever()
+-    thr = retrieve.threshold(ret.name) if threshold is None else threshold
+-    hits = [(n, sc) for n, sc in ret.search(q, retrieve.TOP_K) if sc >= thr]
++    high = retrieve.threshold(ret.name) if threshold is None else threshold
++    low = high if (threshold is not None or not use_llm) else retrieve.threshold_low(ret.name)
++    scored = ret.search(q, retrieve.TOP_K)
++    hits = [(n, sc) for n, sc in scored if sc >= low]
+     if not hits:
+         return _refuse(REFUSAL_NOT_FOUND, "no_match")
++    borderline = max(sc for _, sc in hits) < high
+     ev = ayah_evidence(hits)
+     lines = "\n".join(f"[67:{a['ayah']}] {a['translation']}" for a in ev)
+     return {"answer": "No root was named, so these are the ayahs whose translation is closest in "
+                       "meaning to your question:\n\n" + lines,
+             "citations": sorted(a["ayah"] for a in ev), "refused": False, "verification_errors": [],
+             "intent": "semantic", "roots": [], "matched": [], "retriever": ret.name,
+-            "evidence": ev}
++            "evidence": ev, "borderline": borderline}
+ 
+ 
+ REFUSAL_UNSUPPORTED = ("I can't answer that from the evidence I retrieved for Surah Al-Mulk. "
+@@ -163,24 +170,40 @@ def _with_llm(res, question, use_llm, config=None, transport=None):
+         return {**res, "generated_by": "template", "llm_error": "the LLM is not configured (.env)"}
+ 
+     template, errors, data = res["answer"], None, None
++    stats = {"calls": 0, "latency": 0.0, "cached_latency": 0.0, "tokens_in": 0, "tokens_out": 0,
++             "unmeasured": 0}
++
++    def _count():
++        stats["calls"] += 1
++        if not llm.LAST_CALL.get("measured", True):
++            stats["unmeasured"] += 1
++        stats["latency"] = round(stats["latency"] + llm.LAST_CALL["latency"], 3)
++        if llm.LAST_CALL["cached"]:
++            stats["cached_latency"] = round(stats["cached_latency"] + llm.LAST_CALL["latency"], 3)
++        stats["tokens_in"] += llm.LAST_CALL["tokens_in"]
++        stats["tokens_out"] += llm.LAST_CALL["tokens_out"]
++
+     for attempt in range(1, MAX_ATTEMPTS + 1):
+         try:
+             raw = generate.ask(question, res["intent"], res["evidence"], previous_errors=errors,
+-                               matched=res.get("matched"), config=cfg, transport=transport)
++                               matched=res.get("matched"), extra=res.get("extra"), config=cfg, transport=transport)
+         except llm.LLMError as e:
+-            return {**res, "generated_by": "template", "llm_error": str(e), "attempts": attempt}
+-        data, errors = verify.check(raw, res["intent"], res["evidence"])
++            return {**res, "generated_by": "template", "llm_error": str(e), "attempts": attempt, "llm_stats": stats}
++        _count()
++        data, errors = verify.check(raw, res["intent"], res["evidence"], question=question, extra=res.get("extra"))
+         if not errors:
+             break
+     if errors:
+         # never show an unverified model answer: fall back to the database-only answer
+-        return {**res, "generated_by": "template", "verification_errors": errors, "attempts": MAX_ATTEMPTS}
++        return {**res, "generated_by": "template", "verification_errors": errors, "attempts": MAX_ATTEMPTS,
++                "llm_stats": stats}
+     if data["refuse"]:
+         return {**_refuse(REFUSAL_UNSUPPORTED, res["intent"], res.get("roots", ())),
+-                "generated_by": "llm", "attempts": attempt, "llm_reason": data.get("reason")}
++                "generated_by": "llm", "attempts": attempt, "llm_reason": data.get("reason"),
++                "llm_stats": stats}
+     return {**res, "answer": data["answer"].strip() + "\n\nEvidence:\n" + template,
+             "citations": verify.cited_ayahs(data), "generated_by": "llm", "attempts": attempt,
+-            "claims": data.get("claims") or []}
++            "claims": data.get("claims") or [], "llm_stats": stats}
+ 
+ 
+ def answer(question, retriever=None, threshold=None, use_llm=False, llm_config=None, llm_transport=None):
+@@ -205,7 +228,11 @@ def answer(question, retriever=None, threshold=None, use_llm=False, llm_config=N
+     elif concept:
+         intent, roots = "concept", concept
+     else:
+-        return _with_llm(_semantic(q, retriever, threshold), q, use_llm, llm_config, llm_transport)
++        res = _semantic(q, retriever, threshold, use_llm)
++        out = _with_llm(res, q, use_llm, llm_config, llm_transport)
++        if res.get("borderline") and not out["refused"] and out.get("generated_by") != "llm":
++            return _refuse(REFUSAL_NOT_FOUND, "no_match")   # a weak match nobody vouched for
++        return out
+ 
+     evs = [e for e in (root_evidence(x) for x in roots) if e]
+     if not evs:
+@@ -221,4 +248,13 @@ def answer(question, retriever=None, threshold=None, use_llm=False, llm_config=N
+            "matched": [{"root": it["root"], "via": it["via"], "matched": it["matched"]}
+                        for it in (r["direct"] + r["concept"]) if it["root"] in roots],
+            "evidence": evs}
++    if intent == "concept" and use_llm:
++        # A topic word ("disbelievers", "mercy") must not hide the rest of the question: also give the LLM
++        # the ayahs closest in meaning, so it can answer from whichever evidence fits.
++        ret = retriever or retrieve.get_retriever()
++        have = {a["ayah"] for e in evs for a in e["ayahs"]}
++        found = [(n, sc) for n, sc in ret.search(q, retrieve.TOP_K)
++                 if sc >= retrieve.threshold_low(ret.name) and n not in have]
++        if found:
++            res["extra"] = ayah_evidence(found)
+     return _with_llm(res, q, use_llm, llm_config, llm_transport)
+diff --git a/rag/retrieve.py b/rag/retrieve.py
+index 74332a7..7733aea 100644
+--- a/rag/retrieve.py
++++ b/rag/retrieve.py
+@@ -22,6 +22,13 @@ THRESHOLDS = {
+                       # At 0.24 only 10/17 refusals; at 0.38 15/17 for the loss of one answerable question.
+                       # Tuned on dev: re-check on the held-out test questions.
+ }
++# Three zones for a meaning question. Best score below THRESHOLDS_LOW: always refuse. Between LOW and
++# THRESHOLDS ("borderline"): the LLM sees the candidate ayahs and decides; with no LLM the question is refused.
++# At or above THRESHOLDS: answer. The band is closed (low == high) for TF-IDF.
++THRESHOLDS_LOW = {
++    "tfidf": 0.18,
++    "minilm": 0.28,   # dev sweep: below this almost nothing answerable survives, so refusing outright is safe
++}
+ TOP_K = 3
+ 
+ 
+@@ -92,3 +99,8 @@ def get_retriever(name=None):
+ 
+ def threshold(name=None):
+     return THRESHOLDS[(name or get_retriever().name)]
++
++
++def threshold_low(name=None):
++    name = name or get_retriever().name
++    return min(THRESHOLDS_LOW.get(name, THRESHOLDS[name]), THRESHOLDS[name])
+diff --git a/rag/verify.py b/rag/verify.py
+index 44be418..0e40025 100644
+--- a/rag/verify.py
++++ b/rag/verify.py
+@@ -36,14 +36,27 @@ def _gloss_norm(s):
+     return _norm(s)
+ 
+ 
++def _canon(t):
++    """
++    Arabic spelling compared the way the dataset writes it. Keeps the vowels that tell words apart
++    (خَلَقَ vs خَلْق) but ignores spelling-only variation: a fatha before alif (كَانَ = كانَ), a dagger
++    alif (رَحْمٰن = رَحْمَان), alif maqsura vs ya, and tatweel.
++    """
++    t = unicodedata.normalize("NFC", t).replace("\u0640", "").replace("\u0670", "\u0627")
++    t = t.replace("\u0671", "\u0627").replace("\u0649", "\u064a")
++    t = re.sub("\u064e(?=\u0627)", "", t)
++    t = re.sub("\u0650(?=\u064a)", "", t)
++    t = re.sub("\u064f(?=\u0648)", "", t)
++    return t
++
++
+ def _lemma_ok(claimed, hits):
+     """
+     A claimed lemma must be a lemma of one of the root's words in that ayah.
+     Exact match (diacritics included) is required, because خَلَقَ (verb) and خَلْق (noun) differ only in
+     diacritics. A claim written WITHOUT diacritics is accepted only if it points at exactly one lemma.
+     """
+-    nfc = lambda t: unicodedata.normalize("NFC", t).replace("\u0640", "")
+-    if any(nfc(claimed) == nfc(h["lemma"] or "") for h in hits):
++    if any(_canon(claimed) == _canon(h["lemma"] or "") for h in hits):
+         return True
+     if any(unicodedata.category(c) == "Mn" for c in claimed):
+         return False
+@@ -57,23 +70,29 @@ def _ayah_int(x):
+         return None
+ 
+ 
+-def _index(intent, evidence):
++def _index(intent, evidence, extra=None):
+     """Everything the model is allowed to rely on."""
+-    idx = {"ayahs": set(), "hits": {}, "counts": set(), "texts": []}
++    idx = {"ayahs": set(), "hits": {}, "counts": set(), "texts": [], "arabic": set()}
+     if intent == "semantic":
+         for a in evidence:
+             idx["ayahs"].add(a["ayah"])
+             idx["texts"].append(a["translation"])
+         return idx
++    for a in extra or []:                  # ayahs found by meaning search that came with a root-based answer
++        idx["ayahs"].add(a["ayah"])
++        idx["texts"].append(a["translation"])
+     for ev in evidence:
+-        idx["counts"].add(ev["total"])
++        idx["counts"] |= {ev["total"], len(ev["forms"]), len(ev["ayahs"])}   # the evidence block states all three
++        idx["arabic"].add(strip_arabic(ev["root"]))
+         for f in ev["forms"]:
+             idx["counts"].add(f["count"])
++            idx["arabic"].add(strip_arabic(f["lemma"] or ""))
+             idx["texts"] += f.get("glosses", [])
+         for a in ev["ayahs"]:
+             idx["ayahs"].add(a["ayah"])
+             idx["texts"].append(a["translation"])
+             for h in a["hits"]:
++                idx["arabic"] |= {strip_arabic(h["word"] or ""), strip_arabic(h["lemma"] or "")}
+                 idx["hits"].setdefault((ev["root"], a["ayah"]), []).append(h)
+                 if h.get("gloss"):
+                     idx["texts"].append(h["gloss"])
+@@ -91,7 +110,7 @@ def cited_ayahs(data):
+     return sorted(found)
+ 
+ 
+-def check(raw, intent, evidence):
++def check(raw, intent, evidence, question=None, extra=None):
+     """-> (data or None, [error strings]). Empty error list means the answer passed."""
+     data = generate.parse(raw)
+     if data is None:
+@@ -102,10 +121,10 @@ def check(raw, intent, evidence):
+     if data["refuse"]:
+         return data, []
+ 
+-    idx, errors, answer = _index(intent, evidence), [], data["answer"]
++    idx, errors, answer = _index(intent, evidence, extra), [], data["answer"]
+     allowed = ", ".join(map(str, sorted(idx["ayahs"])))
+ 
+-    cites = cited_ayahs({"answer": answer})
++    cites = cited_ayahs(data)           # in the text or in the structured claims
+     if not cites:
+         errors.append("the answer cites no ayah; cite at least one like [67:3]")
+     for n in cites:
+@@ -134,9 +153,12 @@ def check(raw, intent, evidence):
+             errors.append(f'claim {i}: no word of root {root} in ayah {n} has the meaning "{gloss}"')
+ 
+     texts = _norm(" | ".join(idx["texts"]))
++    asked = _norm(question or "")
+     for m in QUOTED.finditer(answer):
+         phrase = _norm(m.group(1) or m.group(2))
+-        if phrase and phrase not in texts:
++        # allowed: a meaning/translation, an Arabic word or lemma from the evidence, or the learner's own words
++        if phrase and phrase not in texts and not (asked and phrase in asked) \
++                and strip_arabic(phrase) not in idx["arabic"]:
+             errors.append(f'the quoted text "{m.group(1) or m.group(2)}" is not a meaning or translation in the evidence')
+ 
+     if idx["counts"]:
+diff --git a/scripts/debug_question.py b/scripts/debug_question.py
+new file mode 100644
+index 0000000..7d4ef8e
+--- /dev/null
++++ b/scripts/debug_question.py
+@@ -0,0 +1,67 @@
++"""
++Show everything the assistant does with ONE question: how it was routed, the exact evidence sent to the
++LLM, the model's raw reply, what the verifier said, and the final answer.
++
++    python scripts/debug_question.py "Which ayah says no army can help the disbelievers besides God?"
++    python scripts/debug_question.py "What does Jahar mean?" --retriever minilm
++
++Uses the reply cache, so asking about a question you already evaluated costs no quota.
++"""
++import argparse
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
++from rag import generate, llm, pipeline, retrieve, verify  # noqa: E402
++
++
++def main():
++    ap = argparse.ArgumentParser()
++    ap.add_argument("question")
++    ap.add_argument("--retriever", default=None)
++    a = ap.parse_args()
++    ret = retrieve.get_retriever(a.retriever)
++    cfg = llm.get_config()
++
++    def _no_llm(url, headers, body):          # gets the evidence exactly as answer() builds it, without a call
++        raise llm.LLMError("debug")
++    r = pipeline.answer(a.question, retriever=ret, use_llm=True, llm_config=llm.Config("gemini", "x", "x"),
++                        llm_transport=_no_llm)
++    if r["refused"] and r["intent"] == "no_match":      # maybe only the borderline band, which the LLM may judge
++        r2 = pipeline._semantic(a.question, ret, None, True)
++        if not r2["refused"]:
++            r = r2
++    print(f"retriever: {ret.name} (answer above {retrieve.threshold(ret.name)}, ask the LLM from "
++          f"{retrieve.threshold_low(ret.name)})")
++    print(f"route:     intent={r['intent']}  roots={r.get('roots')}  matched={r.get('matched')}")
++    if r["refused"]:
++        print(f"\nREFUSED before the LLM: {r['answer']}")
++        return 0
++    if r["intent"] == "semantic":
++        print("candidates: " + ", ".join(f"{e['ayah']} ({e['score']})" for e in r["evidence"])
++              + ("   [borderline]" if r.get("borderline") else ""))
++    print("\n--- evidence prompt sent to the LLM " + "-" * 40)
++    print(generate.build_user_prompt(a.question, r["intent"], r["evidence"], matched=r.get("matched"),
++                                      extra=r.get("extra")))
++    if cfg is None:
++        print("\n(the LLM is not configured: no reply to show)")
++        return 0
++    try:
++        raw = generate.ask(a.question, r["intent"], r["evidence"], matched=r.get("matched"),
++                           extra=r.get("extra"), config=cfg)
++    except llm.LLMError as e:
++        print(f"\nLLM FAILED: {e}")
++        return 1
++    print("\n--- raw model reply " + "-" * 56)
++    print(raw)
++    data, errors = verify.check(raw, r["intent"], r["evidence"], question=a.question, extra=r.get("extra"))
++    print("\n--- verifier " + "-" * 63)
++    print("passed" if not errors else "\n".join(f"- {e}" for e in errors))
++    final = pipeline.answer(a.question, retriever=ret, use_llm=True)
++    print(f"\n--- final answer (generated_by={final.get('generated_by')}, refused={final['refused']}) " + "-" * 10)
++    print(final["answer"])
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/tests/test_llm.py b/tests/test_llm.py
+index ab76de9..531ce51 100644
+--- a/tests/test_llm.py
++++ b/tests/test_llm.py
+@@ -158,7 +158,11 @@ class TestVerify(unittest.TestCase):
+         self.assertTrue(any("ayah 25" in e for e in errs))
+ 
+     def test_no_citation(self):
+-        self.assertTrue(any("cites no ayah" in e for e in self.check(self.with_(answer='"created"'))))
++        self.assertTrue(any("cites no ayah" in e for e in self.check(self.with_(answer='"created"', claims=[]))))
++
++    def test_claims_count_as_citations(self):
++        # a reply that names its ayah in a structured claim, not in the prose, is still cited
++        self.assertEqual(self.check(self.with_(answer='"created" is used here')), [])
+ 
+     def test_claim_root_not_in_that_ayah(self):
+         bad = self.with_(claims=[{"ayah": 14, "root": "علم", "lemma": "عَلِمَ", "gloss": "know"}])
+diff --git a/tests/test_metrics.py b/tests/test_metrics.py
+new file mode 100644
+index 0000000..c1a961b
+--- /dev/null
++++ b/tests/test_metrics.py
+@@ -0,0 +1,98 @@
++import json
++import math
++import sys
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parent.parent
++sys.path.insert(0, str(ROOT / "eval"))
++
++import metrics  # noqa: E402
++from rag import llm  # noqa: E402
++
++
++def test_wilson_interval_contains_the_rate_and_stays_in_range():
++    lo, hi = metrics.wilson(5, 10)
++    assert 0.23 < lo < 0.25 and 0.75 < hi < 0.77
++    assert metrics.wilson(0, 10)[0] == 0.0 and metrics.wilson(10, 10)[1] == 1.0
++    assert math.isnan(metrics.wilson(0, 0)[0])
++
++
++def test_bootstrap_is_deterministic_and_brackets_the_mean():
++    xs = [1.0, 1.0, 0.0, 1.0, 0.5, 1.0, 0.0, 1.0]
++    a, b = metrics.bootstrap_mean(xs), metrics.bootstrap_mean(xs)
++    assert a == b and a[1] <= a[0] <= a[2]
++    assert metrics.bootstrap_mean([1.0] * 5) == (1.0, 1.0, 1.0)
++
++
++def test_percentile_and_cost():
++    assert metrics.percentile([1, 2, 3, 4, 5], 50) == 3
++    assert abs(metrics.percentile([0, 10], 95) - 9.5) < 1e-9
++    assert abs(metrics.cost_usd(1_000_000, 500_000, 0.10, 0.40) - 0.30) < 1e-9
++
++
++def _q(t, **e):
++    return {"id": "x", "type": t, "question": "q", "expect": e}
++
++
++def test_classify_failure_causes():
++    c = metrics.classify_failure
++    assert c(_q("no_match", refused=True), {"refused": True}) is None
++    assert "should refuse" in c(_q("no_match", refused=True), {"refused": False, "intent": "concept"})
++    assert "LLM refused" in c(_q("semantic", relevant=[1]), {"refused": True, "generated_by": "llm"}, [1])
++    assert "threshold" in c(_q("semantic", relevant=[1]), {"refused": True, "generated_by": None}, [1])
++    assert "not recognised" in c(_q("meaning", roots=["جهر"]), {"refused": True}, [13])
++    assert "not recognised" in c(_q("meaning", roots=["جهر"]), {"refused": False, "roots": [], "cited": [14]}, [13])
++    assert c(_q("single_root", roots=["خلق"]), {"refused": False, "roots": ["موت"], "cited": [2]}, [2, 3]) == "wrong root resolved"
++    assert "contain the root" in c(_q("single_root", roots=["خلق"]), {"refused": False, "roots": ["خلق"], "cited": [2, 9]}, [2, 3])
++    assert c(_q("single_root", roots=["خلق"]), {"refused": False, "roots": ["خلق"], "cited": [2, 3]}, [2, 3]) is None
++    assert "not cited" in c(_q("semantic", relevant=[5]), {"refused": False, "intent": "semantic", "cited": [14]}, [5])
++    assert c(_q("concept", roots_include=["رحم"]), {"refused": False, "cited": [3, 19, 5]}, [3, 19]) is None
++
++
++def test_group_failures_orders_by_size():
++    g = metrics.group_failures([("a", 1, "x"), ("b", 2, "y"), ("b", 3, "z")])
++    assert list(g) == ["b", "a"] and g["b"] == [(2, "y"), (3, "z")]
++
++
++class _Fake:
++    def __init__(self):
++        self.calls = 0
++
++    def __call__(self, url, headers, body):
++        self.calls += 1
++        reply = {"candidates": [{"content": {"parts": [{"text": "{\"ok\": true}"}]}}],
++                 "usageMetadata": {"promptTokenCount": 120, "candidatesTokenCount": 10, "totalTokenCount": 150}}
++        return 200, json.dumps(reply)
++
++
++def test_llm_records_latency_and_tokens_and_replays_them_from_the_cache(tmp_path, monkeypatch):
++    monkeypatch.setattr(llm, "CACHE_DIR", tmp_path)
++    cfg, fake = llm.Config("gemini", "k", "m"), _Fake()
++    llm.generate_json("s", "u", config=cfg, transport=fake)
++    first = dict(llm.LAST_CALL)
++    assert first["cached"] is False and first["tokens_in"] == 120 and first["tokens_out"] == 30
++    llm.generate_json("s", "u", config=cfg, transport=fake)
++    assert fake.calls == 1                                   # second call came from the cache
++    assert llm.LAST_CALL["cached"] is True
++    assert llm.LAST_CALL["tokens_in"] == 120 and llm.LAST_CALL["latency"] == first["latency"]
++
++
++def test_usage_for_openai_compatible_replies():
++    assert llm._usage("openai_compatible", {"usage": {"prompt_tokens": 7, "completion_tokens": 3}}) == (7, 3)
++    assert llm._usage("gemini", {}) == (0, 0)
++
++
++def test_503_now_has_a_helpful_hint():
++    assert "busy" in llm._HINTS[503]
++
++
++def test_cache_entries_without_timing_are_flagged_not_counted_as_zero(tmp_path, monkeypatch):
++    monkeypatch.setattr(llm, "CACHE_DIR", tmp_path)
++    cfg = llm.Config("gemini", "k", "m")
++    fake = _Fake()
++    llm.generate_json("s", "u", config=cfg, transport=fake)
++    f = next(tmp_path.glob("*.json"))
++    old = json.loads(f.read_text(encoding="utf-8"))
++    f.write_text(json.dumps({"model": old["model"], "text": old["text"]}), encoding="utf-8")   # pre-timing format
++    llm.generate_json("s", "u", config=cfg, transport=fake)
++    assert llm.LAST_CALL["cached"] is True and llm.LAST_CALL["measured"] is False
+diff --git a/tests/test_threezone.py b/tests/test_threezone.py
+new file mode 100644
+index 0000000..08be00c
+--- /dev/null
++++ b/tests/test_threezone.py
+@@ -0,0 +1,99 @@
++import json
++
++from rag import llm, pipeline, retrieve
++
++CFG = llm.Config("gemini", "k", "m")
++
++
++class Stub:
++    """A retriever that always returns the same scored ayahs."""
++    name = "minilm"
++
++    def __init__(self, scored):
++        self.scored = scored
++
++    def search(self, q, k):
++        return self.scored[:k]
++
++
++def _reply(**data):
++    body = {"candidates": [{"content": {"parts": [{"text": json.dumps(data)}]}}]}
++    return lambda url, headers, b: (200, json.dumps(body))
++
++
++def _down(url, headers, body):
++    raise llm.LLMError("could not reach the provider: TimeoutError")
++
++
++def _no_cache(monkeypatch, tmp_path):
++    monkeypatch.setattr(llm, "CACHE_DIR", tmp_path)
++
++
++LOW, HIGH = retrieve.THRESHOLDS_LOW["minilm"], retrieve.THRESHOLDS["minilm"]
++BORDER = round((LOW + HIGH) / 2, 3)
++
++
++def test_below_the_low_threshold_is_always_refused(monkeypatch, tmp_path):
++    _no_cache(monkeypatch, tmp_path)
++    r = pipeline.answer("something unrelated", retriever=Stub([(5, LOW - 0.05)]), use_llm=True,
++                        llm_config=CFG, llm_transport=_reply(refuse=False, answer="See [67:5].", claims=[]))
++    assert r["refused"]
++
++
++def test_borderline_question_goes_to_the_llm_and_its_answer_is_used(monkeypatch, tmp_path):
++    _no_cache(monkeypatch, tmp_path)
++    r = pipeline.answer("stars", retriever=Stub([(5, BORDER)]), use_llm=True, llm_config=CFG,
++                        llm_transport=_reply(refuse=False, answer="Ayah 5 mentions stars [67:5].", claims=[]))
++    assert not r["refused"] and r["generated_by"] == "llm" and r["borderline"]
++
++
++def test_borderline_question_is_refused_when_the_llm_refuses(monkeypatch, tmp_path):
++    _no_cache(monkeypatch, tmp_path)
++    r = pipeline.answer("poem", retriever=Stub([(5, BORDER)]), use_llm=True, llm_config=CFG,
++                        llm_transport=_reply(refuse=True, answer="", claims=[], reason="unrelated"))
++    assert r["refused"] and r["llm_reason"] == "unrelated"
++
++
++def test_borderline_question_is_refused_when_the_llm_is_unavailable(monkeypatch, tmp_path):
++    _no_cache(monkeypatch, tmp_path)
++    r = pipeline.answer("stars", retriever=Stub([(5, BORDER)]), use_llm=True, llm_config=CFG, llm_transport=_down)
++    assert r["refused"]
++
++
++def test_borderline_question_is_refused_without_an_llm():
++    assert pipeline.answer("stars", retriever=Stub([(5, BORDER)]), use_llm=False)["refused"]
++
++
++def test_confident_match_is_still_answered_when_the_llm_is_down(monkeypatch, tmp_path):
++    _no_cache(monkeypatch, tmp_path)
++    r = pipeline.answer("stars", retriever=Stub([(5, HIGH + 0.1)]), use_llm=True, llm_config=CFG, llm_transport=_down)
++    assert not r["refused"] and r["generated_by"] == "template"
++
++
++class Capture:
++    """Records the request body and answers with a fixed reply."""
++    def __init__(self, **data):
++        self.bodies, self.data = [], data
++
++    def __call__(self, url, headers, body):
++        self.bodies.append(json.dumps(body, ensure_ascii=False))
++        reply = {"candidates": [{"content": {"parts": [{"text": json.dumps(self.data)}]}}]}
++        return 200, json.dumps(reply)
++
++
++def test_topic_word_question_also_gets_the_meaning_search_ayahs(monkeypatch, tmp_path):
++    _no_cache(monkeypatch, tmp_path)
++    cap = Capture(refuse=False, answer="Ayah 12 speaks of fearing the Lord [67:12].", claims=[])
++    r = pipeline.answer("Which words relate to disbelievers?", retriever=Stub([(12, 0.5)]),
++                        use_llm=True, llm_config=CFG, llm_transport=cap)
++    assert r["intent"] == "concept" and r["generated_by"] == "llm" and not r["refused"]
++    assert "ALSO CLOSE IN MEANING TO THE QUESTION" in cap.bodies[0] and "[67:12]" in cap.bodies[0]
++    assert 12 in r["citations"]                      # citing an ayah that only the search found is allowed
++
++
++def test_a_root_question_does_not_get_search_ayahs(monkeypatch, tmp_path):
++    _no_cache(monkeypatch, tmp_path)
++    cap = Capture(refuse=False, answer="See [67:2].", claims=[])
++    pipeline.answer("What does the root khalaq mean?", retriever=Stub([(3, 0.5)]), use_llm=True,
++                    llm_config=CFG, llm_transport=cap)
++    assert "ALSO CLOSE IN MEANING TO THE QUESTION" not in cap.bodies[0]

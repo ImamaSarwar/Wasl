@@ -22,6 +22,13 @@ THRESHOLDS = {
                       # At 0.24 only 10/17 refusals; at 0.38 15/17 for the loss of one answerable question.
                       # Tuned on dev: re-check on the held-out test questions.
 }
+# Three zones for a meaning question. Best score below THRESHOLDS_LOW: always refuse. Between LOW and
+# THRESHOLDS ("borderline"): the LLM sees the candidate ayahs and decides; with no LLM the question is refused.
+# At or above THRESHOLDS: answer. The band is closed (low == high) for TF-IDF.
+THRESHOLDS_LOW = {
+    "tfidf": 0.18,
+    "minilm": 0.28,   # dev sweep: below this almost nothing answerable survives, so refusing outright is safe
+}
 TOP_K = 3
 
 
@@ -92,3 +99,8 @@ def get_retriever(name=None):
 
 def threshold(name=None):
     return THRESHOLDS[(name or get_retriever().name)]
+
+
+def threshold_low(name=None):
+    name = name or get_retriever().name
+    return min(THRESHOLDS_LOW.get(name, THRESHOLDS[name]), THRESHOLDS[name])

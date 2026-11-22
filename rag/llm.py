@@ -119,12 +119,32 @@ def _http_transport(url, headers, body, timeout=60):
         raise LLMError(f"could not reach the provider: {type(e).__name__}") from None
 
 
+# What the most recent generate_json call cost: latency in seconds, tokens, and whether it came from the
+# disk cache (a cache hit reports the numbers recorded when the call was first made).
+LAST_CALL = {"latency": 0.0, "tokens_in": 0, "tokens_out": 0, "cached": False, "measured": True}
+
+
+def _usage(provider, data):
+    """(tokens_in, tokens_out) from a provider reply, 0 when it does not say."""
+    if provider == "gemini":
+        u = data.get("usageMetadata") or {}
+        tin = int(u.get("promptTokenCount") or 0)
+        total = int(u.get("totalTokenCount") or 0)
+        return tin, (total - tin if total else int(u.get("candidatesTokenCount") or 0))
+    u = data.get("usage") or {}
+    return int(u.get("prompt_tokens") or 0), int(u.get("completion_tokens") or 0)
+
+
 _HINTS = {
     400: "bad request - often a wrong model name or an unsupported option",
     401: "the API key was rejected - check LLM_API_KEY in .env",
     403: "the key is not allowed to use this model/region - check the key and model",
     404: "model not found - check LLM_MODEL (copy the exact id from AI Studio)",
     429: "rate limit reached - wait a minute, or use a lighter model (gemini-3.5-flash-lite)",
+    500: "the provider had an internal error - retry in a minute or switch LLM_MODEL",
+    502: "the provider is busy or down - retry in a minute or switch LLM_MODEL",
+    503: "the provider is busy or down - retry in a minute or switch LLM_MODEL",
+    504: "the provider timed out - retry in a minute or switch LLM_MODEL",
 }
 
 
@@ -140,20 +160,30 @@ def generate_json(system, user, *, config=None, transport=None, use_cache=True,
                                           ensure_ascii=False).encode("utf-8")).hexdigest()
     cache_file = CACHE_DIR / f"{cache_key}.json"
     if use_cache and cache_file.exists():
-        return json.loads(cache_file.read_text(encoding="utf-8"))["text"]
+        hit = json.loads(cache_file.read_text(encoding="utf-8"))
+        # replies cached before timing was recorded carry no numbers: flag them instead of reporting zeros
+        LAST_CALL.update(latency=hit.get("latency", 0.0), tokens_in=hit.get("tokens_in", 0),
+                         tokens_out=hit.get("tokens_out", 0), cached=True, measured="latency" in hit)
+        return hit["text"]
 
     url, headers, body = _request_parts(cfg, system, user, temperature)
     last = ""
+    started = time.perf_counter()
     for attempt in range(max_retries):
         status, text = transport(url, headers, body)
         if status == 200:
             try:
-                reply = _extract_text(cfg, json.loads(text))
+                parsed = json.loads(text)
+                reply = _extract_text(cfg, parsed)
             except json.JSONDecodeError:
                 raise LLMError("the provider did not return valid JSON") from None
+            tin, tout = _usage(cfg.provider, parsed)
+            latency = round(time.perf_counter() - started, 3)
+            LAST_CALL.update(latency=latency, tokens_in=tin, tokens_out=tout, cached=False, measured=True)
             if use_cache:
                 CACHE_DIR.mkdir(exist_ok=True)
-                cache_file.write_text(json.dumps({"model": cfg.model, "text": reply}, ensure_ascii=False),
+                cache_file.write_text(json.dumps({"model": cfg.model, "text": reply, "latency": latency,
+                                                  "tokens_in": tin, "tokens_out": tout}, ensure_ascii=False),
                                       encoding="utf-8")
             return reply
         last = f"HTTP {status}: {_HINTS.get(status, 'provider error')}"

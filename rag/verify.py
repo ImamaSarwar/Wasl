@@ -36,14 +36,27 @@ def _gloss_norm(s):
     return _norm(s)
 
 
+def _canon(t):
+    """
+    Arabic spelling compared the way the dataset writes it. Keeps the vowels that tell words apart
+    (خَلَقَ vs خَلْق) but ignores spelling-only variation: a fatha before alif (كَانَ = كانَ), a dagger
+    alif (رَحْمٰن = رَحْمَان), alif maqsura vs ya, and tatweel.
+    """
+    t = unicodedata.normalize("NFC", t).replace("\u0640", "").replace("\u0670", "\u0627")
+    t = t.replace("\u0671", "\u0627").replace("\u0649", "\u064a")
+    t = re.sub("\u064e(?=\u0627)", "", t)
+    t = re.sub("\u0650(?=\u064a)", "", t)
+    t = re.sub("\u064f(?=\u0648)", "", t)
+    return t
+
+
 def _lemma_ok(claimed, hits):
     """
     A claimed lemma must be a lemma of one of the root's words in that ayah.
     Exact match (diacritics included) is required, because خَلَقَ (verb) and خَلْق (noun) differ only in
     diacritics. A claim written WITHOUT diacritics is accepted only if it points at exactly one lemma.
     """
-    nfc = lambda t: unicodedata.normalize("NFC", t).replace("\u0640", "")
-    if any(nfc(claimed) == nfc(h["lemma"] or "") for h in hits):
+    if any(_canon(claimed) == _canon(h["lemma"] or "") for h in hits):
         return True
     if any(unicodedata.category(c) == "Mn" for c in claimed):
         return False
@@ -57,23 +70,29 @@ def _ayah_int(x):
         return None
 
 
-def _index(intent, evidence):
+def _index(intent, evidence, extra=None):
     """Everything the model is allowed to rely on."""
-    idx = {"ayahs": set(), "hits": {}, "counts": set(), "texts": []}
+    idx = {"ayahs": set(), "hits": {}, "counts": set(), "texts": [], "arabic": set()}
     if intent == "semantic":
         for a in evidence:
             idx["ayahs"].add(a["ayah"])
             idx["texts"].append(a["translation"])
         return idx
+    for a in extra or []:                  # ayahs found by meaning search that came with a root-based answer
+        idx["ayahs"].add(a["ayah"])
+        idx["texts"].append(a["translation"])
     for ev in evidence:
-        idx["counts"].add(ev["total"])
+        idx["counts"] |= {ev["total"], len(ev["forms"]), len(ev["ayahs"])}   # the evidence block states all three
+        idx["arabic"].add(strip_arabic(ev["root"]))
         for f in ev["forms"]:
             idx["counts"].add(f["count"])
+            idx["arabic"].add(strip_arabic(f["lemma"] or ""))
             idx["texts"] += f.get("glosses", [])
         for a in ev["ayahs"]:
             idx["ayahs"].add(a["ayah"])
             idx["texts"].append(a["translation"])
             for h in a["hits"]:
+                idx["arabic"] |= {strip_arabic(h["word"] or ""), strip_arabic(h["lemma"] or "")}
                 idx["hits"].setdefault((ev["root"], a["ayah"]), []).append(h)
                 if h.get("gloss"):
                     idx["texts"].append(h["gloss"])
@@ -91,7 +110,7 @@ def cited_ayahs(data):
     return sorted(found)
 
 
-def check(raw, intent, evidence):
+def check(raw, intent, evidence, question=None, extra=None):
     """-> (data or None, [error strings]). Empty error list means the answer passed."""
     data = generate.parse(raw)
     if data is None:
@@ -102,10 +121,10 @@ def check(raw, intent, evidence):
     if data["refuse"]:
         return data, []
 
-    idx, errors, answer = _index(intent, evidence), [], data["answer"]
+    idx, errors, answer = _index(intent, evidence, extra), [], data["answer"]
     allowed = ", ".join(map(str, sorted(idx["ayahs"])))
 
-    cites = cited_ayahs({"answer": answer})
+    cites = cited_ayahs(data)           # in the text or in the structured claims
     if not cites:
         errors.append("the answer cites no ayah; cite at least one like [67:3]")
     for n in cites:
@@ -134,9 +153,12 @@ def check(raw, intent, evidence):
             errors.append(f'claim {i}: no word of root {root} in ayah {n} has the meaning "{gloss}"')
 
     texts = _norm(" | ".join(idx["texts"]))
+    asked = _norm(question or "")
     for m in QUOTED.finditer(answer):
         phrase = _norm(m.group(1) or m.group(2))
-        if phrase and phrase not in texts:
+        # allowed: a meaning/translation, an Arabic word or lemma from the evidence, or the learner's own words
+        if phrase and phrase not in texts and not (asked and phrase in asked) \
+                and strip_arabic(phrase) not in idx["arabic"]:
             errors.append(f'the quoted text "{m.group(1) or m.group(2)}" is not a meaning or translation in the evidence')
 
     if idx["counts"]:

@@ -128,20 +128,27 @@ def _refuse(message, intent, roots=()):
             "intent": intent, "roots": list(roots), "evidence": None}
 
 
-def _semantic(q, retriever=None, threshold=None):
-    """No root named: find ayahs by meaning. Refuse if even the best match is too weak."""
+def _semantic(q, retriever=None, threshold=None, use_llm=False):
+    """
+    No root named: find ayahs by meaning. Refuse if even the best match is too weak.
+    With an LLM the weak-but-not-hopeless band (retrieve.THRESHOLDS_LOW up to the threshold) is let through,
+    marked "borderline", so the LLM can judge the candidates; answer() refuses it if the LLM cannot.
+    """
     ret = retriever or retrieve.get_retriever()
-    thr = retrieve.threshold(ret.name) if threshold is None else threshold
-    hits = [(n, sc) for n, sc in ret.search(q, retrieve.TOP_K) if sc >= thr]
+    high = retrieve.threshold(ret.name) if threshold is None else threshold
+    low = high if (threshold is not None or not use_llm) else retrieve.threshold_low(ret.name)
+    scored = ret.search(q, retrieve.TOP_K)
+    hits = [(n, sc) for n, sc in scored if sc >= low]
     if not hits:
         return _refuse(REFUSAL_NOT_FOUND, "no_match")
+    borderline = max(sc for _, sc in hits) < high
     ev = ayah_evidence(hits)
     lines = "\n".join(f"[67:{a['ayah']}] {a['translation']}" for a in ev)
     return {"answer": "No root was named, so these are the ayahs whose translation is closest in "
                       "meaning to your question:\n\n" + lines,
             "citations": sorted(a["ayah"] for a in ev), "refused": False, "verification_errors": [],
             "intent": "semantic", "roots": [], "matched": [], "retriever": ret.name,
-            "evidence": ev}
+            "evidence": ev, "borderline": borderline}
 
 
 REFUSAL_UNSUPPORTED = ("I can't answer that from the evidence I retrieved for Surah Al-Mulk. "
@@ -163,24 +170,40 @@ def _with_llm(res, question, use_llm, config=None, transport=None):
         return {**res, "generated_by": "template", "llm_error": "the LLM is not configured (.env)"}
 
     template, errors, data = res["answer"], None, None
+    stats = {"calls": 0, "latency": 0.0, "cached_latency": 0.0, "tokens_in": 0, "tokens_out": 0,
+             "unmeasured": 0}
+
+    def _count():
+        stats["calls"] += 1
+        if not llm.LAST_CALL.get("measured", True):
+            stats["unmeasured"] += 1
+        stats["latency"] = round(stats["latency"] + llm.LAST_CALL["latency"], 3)
+        if llm.LAST_CALL["cached"]:
+            stats["cached_latency"] = round(stats["cached_latency"] + llm.LAST_CALL["latency"], 3)
+        stats["tokens_in"] += llm.LAST_CALL["tokens_in"]
+        stats["tokens_out"] += llm.LAST_CALL["tokens_out"]
+
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
             raw = generate.ask(question, res["intent"], res["evidence"], previous_errors=errors,
-                               matched=res.get("matched"), config=cfg, transport=transport)
+                               matched=res.get("matched"), extra=res.get("extra"), config=cfg, transport=transport)
         except llm.LLMError as e:
-            return {**res, "generated_by": "template", "llm_error": str(e), "attempts": attempt}
-        data, errors = verify.check(raw, res["intent"], res["evidence"])
+            return {**res, "generated_by": "template", "llm_error": str(e), "attempts": attempt, "llm_stats": stats}
+        _count()
+        data, errors = verify.check(raw, res["intent"], res["evidence"], question=question, extra=res.get("extra"))
         if not errors:
             break
     if errors:
         # never show an unverified model answer: fall back to the database-only answer
-        return {**res, "generated_by": "template", "verification_errors": errors, "attempts": MAX_ATTEMPTS}
+        return {**res, "generated_by": "template", "verification_errors": errors, "attempts": MAX_ATTEMPTS,
+                "llm_stats": stats}
     if data["refuse"]:
         return {**_refuse(REFUSAL_UNSUPPORTED, res["intent"], res.get("roots", ())),
-                "generated_by": "llm", "attempts": attempt, "llm_reason": data.get("reason")}
+                "generated_by": "llm", "attempts": attempt, "llm_reason": data.get("reason"),
+                "llm_stats": stats}
     return {**res, "answer": data["answer"].strip() + "\n\nEvidence:\n" + template,
             "citations": verify.cited_ayahs(data), "generated_by": "llm", "attempts": attempt,
-            "claims": data.get("claims") or []}
+            "claims": data.get("claims") or [], "llm_stats": stats}
 
 
 def answer(question, retriever=None, threshold=None, use_llm=False, llm_config=None, llm_transport=None):
@@ -205,7 +228,11 @@ def answer(question, retriever=None, threshold=None, use_llm=False, llm_config=N
     elif concept:
         intent, roots = "concept", concept
     else:
-        return _with_llm(_semantic(q, retriever, threshold), q, use_llm, llm_config, llm_transport)
+        res = _semantic(q, retriever, threshold, use_llm)
+        out = _with_llm(res, q, use_llm, llm_config, llm_transport)
+        if res.get("borderline") and not out["refused"] and out.get("generated_by") != "llm":
+            return _refuse(REFUSAL_NOT_FOUND, "no_match")   # a weak match nobody vouched for
+        return out
 
     evs = [e for e in (root_evidence(x) for x in roots) if e]
     if not evs:
@@ -221,4 +248,13 @@ def answer(question, retriever=None, threshold=None, use_llm=False, llm_config=N
            "matched": [{"root": it["root"], "via": it["via"], "matched": it["matched"]}
                        for it in (r["direct"] + r["concept"]) if it["root"] in roots],
            "evidence": evs}
+    if intent == "concept" and use_llm:
+        # A topic word ("disbelievers", "mercy") must not hide the rest of the question: also give the LLM
+        # the ayahs closest in meaning, so it can answer from whichever evidence fits.
+        ret = retriever or retrieve.get_retriever()
+        have = {a["ayah"] for e in evs for a in e["ayahs"]}
+        found = [(n, sc) for n, sc in ret.search(q, retrieve.TOP_K)
+                 if sc >= retrieve.threshold_low(ret.name) and n not in have]
+        if found:
+            res["extra"] = ayah_evidence(found)
     return _with_llm(res, q, use_llm, llm_config, llm_transport)
