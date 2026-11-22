@@ -32,3 +32,27 @@ def test_normal_vocabulary_questions_are_still_answered(q):
 def test_the_word_works_is_not_a_concept():
     assert resolve("Explain how machine learning works.") == {"direct": [], "concept": []}
     assert resolve("Which verses talk about deeds?")["concept"]   # a real topic word still works
+
+
+@pytest.mark.parametrize("q", [
+    "How is the root Reham used across the Quran",
+    "Where else does this word appear outside this surah?",
+    "Compare this with other surahs.",
+])
+def test_whole_quran_questions_are_refused(q):
+    r = answer(q)
+    assert r["refused"] and r["evidence"] is None
+
+
+def test_across_the_surah_is_still_answered():
+    assert not answer("How is the root of khalaqa used across Surah Al-Mulk?")["refused"]
+
+
+@pytest.mark.parametrize("q", [
+    "Why did Allah not tell anybody when the final hour will happen?",
+    "How do the verses about the sky relate to a person's everyday life and choices?",
+    "Is the word for holding birds in the air related to the Urdu word maskan?",
+])
+def test_why_god_daily_life_and_other_language_questions_are_refused(q):
+    r = answer(q)
+    assert r["refused"] and r["evidence"] is None

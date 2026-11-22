@@ -26,7 +26,10 @@ OUT_OF_SCOPE = re.compile(
     r"will (?:people|those|non-?believers|unbelievers|disbelievers|muslims|christians|jews)\b.{0,60}"
     r"(?:punish|hell|heaven|paradise|saved|forgiven)|"
     r"should i (?:be )?(?:afraid|fear|worry)|protect me|save me|every night|"
-    r"virtues? of (?:reading|reciting|this)|reward (?:for|of) (?:reading|reciting))", re.I)
+    r"virtues? of (?:reading|reciting|this)|reward (?:for|of) (?:reading|reciting)|"
+    # why God did something, how a verse applies to someone's life, other languages' word histories
+    r"why (?:did|does|would|will) (?:allah|god)\b|(?:everyday|daily|my|our|a person'?s) (?:life|choices|decisions)|"
+    r"(?:urdu|hindi|persian|turkish|english|hebrew|greek) word)", re.I)
 
 # The assistant covers Surah Al-Mulk only. A question that names another surah (or an ayah of
 # another surah) is refused up front: embedding search would otherwise return a loosely related
@@ -50,6 +53,11 @@ OTHER_SURAH = re.compile(
     re.I)
 # a named verse or chapter of another surah is out of scope even without a surah number
 OTHER_SURAH = re.compile(OTHER_SURAH.pattern + r"|\b(?:ayat(?:ul|\s+al|\s+an)?[-\s]?(?:kursi|nur)|throne verse)\b", re.I)
+# a question about the whole Quran (or "outside this surah") asks for more than Al-Mulk can answer
+OTHER_SURAH = re.compile(
+    OTHER_SURAH.pattern + r"|\b(?:across|throughout|elsewhere in|rest of)\s+(?:the\s+)?(?:whole\s+|entire\s+|full\s+)?"
+    r"(?:qur'?an|koran)\b|\b(?:whole|entire)\s+qur'?an\b|\boutside\s+(?:of\s+)?(?:this\s+surah|surah\s+al-?mulk|al-?mulk)\b"
+    r"|\bother\s+(?:surahs|suras|chapters)\b", re.I)
 TAFSIR = re.compile(
     r"\b(tafsir|tafseer|exegesis|interpretation of|what does .* really mean|hidden meaning|secret meaning|"
     r"symbolic meaning|ibn kathir|ibn abbas|al-?tabari|tabari|qurtubi|jalalayn|sayyid qutb|maududi|"

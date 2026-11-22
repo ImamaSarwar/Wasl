@@ -6,6 +6,7 @@ Pure Python, no LLM, no network. Four ways a root can be named (strongest first)
   latin    - a dashed or plain root: q-d-r, kh-l-q, '-l-m, qdr
   lemma    - a Latin spelling of a word form: khalaqa, khalq
   concept  - an English concept word (see/seeing/sight -> رأي, بصر, عين), from rag/concepts.json
+  approx   - a rough Latin spelling of a word form (jahar, tibaka, biyadih), see _approx_root
 
 Ambiguous spellings (the same Latin string pointing at two roots) are dropped rather than guessed.
 """
@@ -115,6 +116,83 @@ def _build_indexes():
 
 _AR_ROOT, _AR_LEMMA, _LAT_ROOT, _BARE_ROOT, _LAT_LEMMA, _LAT_EXACT, _CONCEPTS = _build_indexes()
 
+# ---- approximate spelling -------------------------------------------------------------------------
+# People type word forms by ear: "Jahar" for jahara, "Tibaka" for tabaq, "biyadih" for bi + yad + ih.
+# Two narrow rules, both applied only after every exact rule failed:
+#   1. fold q->k and every vowel to "a", then accept a word form at edit distance 1 (len >= 5) when
+#      exactly one root is nearest;
+#   2. strip a clitic prefix AND suffix (bi-...-hi) and look the rest up as an exact word form.
+# English words that fold onto a word form (series, laser, mouse...) are listed in english_block.txt,
+# and rule 1 also needs a context that says "this is a foreign word" (quotes, "does X mean", "root of X").
+FUZZY = True
+_BLOCK = set((HERE / "english_block.txt").read_text(encoding="utf-8").split()) if (HERE / "english_block.txt").exists() else set()
+_PRE = ("wal", "bil", "lil", "bi", "wa", "fa", "li", "ka", "al")
+_SUF = ("ihi", "hunna", "hum", "kum", "ih", "hi", "hu", "ha", "ka", "ki", "na", "ni", "uh")
+_QUOTES = "\"'“”‘’«»`"
+
+
+def _fold_approx(s):
+    s = re.sub(r"['`^]", "", _norm_latin(s)).replace("q", "k")
+    return re.sub(r"[aeiou]", "a", s)
+
+
+def _lev1(a, b):
+    """Edit distance, capped: 0, 1, or 2 (meaning 'two or more')."""
+    if abs(len(a) - len(b)) > 1:
+        return 2
+    d = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        prev, d[0] = d[0], i
+        for j, cb in enumerate(b, 1):
+            prev, d[j] = d[j], min(d[j] + 1, d[j - 1] + 1, prev + (ca != cb))
+    return min(d[-1], 2)
+
+
+def _build_fuzzy():
+    keys, exact = {}, {}
+    for r, e in ALIASES.items():
+        for lat in e["lemmas"].values():
+            k = _fold_approx(lat)
+            if len(k) >= 5:
+                keys.setdefault(k, set()).add(r)
+            x = re.sub(r"['`^]", "", _norm_latin(lat))
+            if len(x) >= 3:
+                exact.setdefault(x, set()).add(r)
+    return keys, {k: next(iter(v)) for k, v in exact.items() if len(v) == 1}
+
+
+_FUZZY_KEYS, _CLITIC_EXACT = _build_fuzzy()
+
+
+def _approx_root(word, question, start, end):
+    """Root for a roughly spelled word form, or None. See the block comment above."""
+    w = _norm_latin(word)
+    if len(w) < 5 or w in _BLOCK or w in _LAT_EXACT:
+        return None
+    for p in _PRE:                                   # rule 2: bi-yad-ih -> yad
+        if w.startswith(p):
+            rest = w[len(p):]
+            for sfx in _SUF:
+                if rest.endswith(sfx) and rest[:-len(sfx)] in _CLITIC_EXACT:
+                    return _CLITIC_EXACT[rest[:-len(sfx)]]
+    before = question[max(0, start - 24):start].lower()
+    after = question[end:end + 16].lower()
+    quoted = (start > 0 and question[start - 1] in _QUOTES) or (end < len(question) and question[end] in _QUOTES)
+    asked = re.search(r"\b(?:does|do|is|word|term|root|of|by|about|mean(?:s|ing)?)\s*[\"'“‘]?$", before) or \
+        re.match(r"[\"'”’]?\s*(?:mean|means|meaning|come|derive|stand)\b", after)
+    if not (quoted or asked):
+        return None
+    f = _fold_approx(w)                              # rule 1
+    best, roots = 2, set()
+    for k, rs in _FUZZY_KEYS.items():
+        d = _lev1(f, k)
+        if d < best:
+            best, roots = d, set(rs)
+        elif d == best and d < 2:
+            roots |= rs
+    return next(iter(roots)) if best < 2 and len(roots) == 1 else None
+
+
 _DASHED = re.compile(r"(?<![\w'])((?:kh|sh|th|dh|gh|[a-z'ʿʾʻʼ‘’`´])(?:[-–.]\s?(?:kh|sh|th|dh|gh|[a-z'ʿʾʻʼ‘’`´])){2})(?![\w'])", re.I)
 # The surah's own name must not be read as the root ملك ("in Surah Al-Mulk").
 _SURAH_NAME = re.compile(r"\b(?:surah|sura|surat)\s+(?:al|an)?[-\s]?mulk\b|\bal[-\s]?mulk\b|سورة\s+الملك", re.I)
@@ -160,6 +238,10 @@ def resolve(question):
             add(_LAT_EXACT[_norm_latin(w)], "lemma", w, m.start())
         elif _norm_lemma(w) in _LAT_LEMMA:
             add(_LAT_LEMMA[_norm_lemma(w)], "lemma", w, m.start())
+        elif FUZZY:
+            root = _approx_root(w, question, m.start(), m.end())
+            if root:
+                add(root, "lemma", w, m.start())
 
     direct = [it for _, it in sorted(found.values(), key=lambda x: x[0])]
     direct_roots = {it["root"] for it in direct}

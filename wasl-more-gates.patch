@@ -1,0 +1,34 @@
+diff --git a/rag/pipeline.py b/rag/pipeline.py
+index af1c817..70035a9 100644
+--- a/rag/pipeline.py
++++ b/rag/pipeline.py
+@@ -26,7 +26,10 @@ OUT_OF_SCOPE = re.compile(
+     r"will (?:people|those|non-?believers|unbelievers|disbelievers|muslims|christians|jews)\b.{0,60}"
+     r"(?:punish|hell|heaven|paradise|saved|forgiven)|"
+     r"should i (?:be )?(?:afraid|fear|worry)|protect me|save me|every night|"
+-    r"virtues? of (?:reading|reciting|this)|reward (?:for|of) (?:reading|reciting))", re.I)
++    r"virtues? of (?:reading|reciting|this)|reward (?:for|of) (?:reading|reciting)|"
++    # why God did something, how a verse applies to someone's life, other languages' word histories
++    r"why (?:did|does|would|will) (?:allah|god)\b|(?:everyday|daily|my|our|a person'?s) (?:life|choices|decisions)|"
++    r"(?:urdu|hindi|persian|turkish|english|hebrew|greek) word)", re.I)
+ 
+ # The assistant covers Surah Al-Mulk only. A question that names another surah (or an ayah of
+ # another surah) is refused up front: embedding search would otherwise return a loosely related
+diff --git a/tests/test_gates.py b/tests/test_gates.py
+index 9d61ce7..79462be 100644
+--- a/tests/test_gates.py
++++ b/tests/test_gates.py
+@@ -46,3 +46,13 @@ def test_whole_quran_questions_are_refused(q):
+ 
+ def test_across_the_surah_is_still_answered():
+     assert not answer("How is the root of khalaqa used across Surah Al-Mulk?")["refused"]
++
++
++@pytest.mark.parametrize("q", [
++    "Why did Allah not tell anybody when the final hour will happen?",
++    "How do the verses about the sky relate to a person's everyday life and choices?",
++    "Is the word for holding birds in the air related to the Urdu word maskan?",
++])
++def test_why_god_daily_life_and_other_language_questions_are_refused(q):
++    r = answer(q)
++    assert r["refused"] and r["evidence"] is None
