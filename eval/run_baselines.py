@@ -302,7 +302,8 @@ def main():
                                              "measured": not usage.get("unmeasured", 0),
                                              "tokens_in": usage.get("tokens_in", 0),
                                              "tokens_out": usage.get("tokens_out", 0)})
-            if name in USES_LLM:
+            # pause only after a live call (a cached reply takes no time, so there is nothing to space out)
+            if name in USES_LLM and (wall > 0.4 or out.get("error")):
                 time.sleep(a.delay)
             if i % 20 == 0:
                 print(f"  {name}: {i}/{len(qs)}", flush=True)
