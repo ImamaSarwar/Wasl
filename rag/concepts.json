@@ -1,6 +1,6 @@
 {
   "_note": "English concept word -> Arabic roots present in Surah Al-Mulk. EXTEND THIS as you write eval questions. Every root here must exist in the DB (tests/test_rag.py checks).",
-  "see|seeing|sight|vision|look|looking|behold": ["رأي", "بصر"],
+  "see|seeing|sight|vision|look at|looking at|behold": ["رأي", "بصر"],
   "hear|hearing|listen|listening": ["سمع"],
   "know|knowledge|knowing|aware|acquainted|wise": ["علم", "عرف", "خبر"],
   "create|creation|creating|creator": ["خلق", "فطر"],

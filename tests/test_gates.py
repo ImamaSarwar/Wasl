@@ -56,3 +56,15 @@ def test_across_the_surah_is_still_answered():
 def test_why_god_daily_life_and_other_language_questions_are_refused(q):
     r = answer(q)
     assert r["refused"] and r["evidence"] is None
+
+
+def test_look_like_is_not_the_concept_of_seeing():
+    # "what does X look like" asks for a description; it must not pull in the roots for sight
+    assert resolve("What does kingship and supreme authority look like in this surah?")["concept"] == []
+    assert resolve("What will the disbelievers' faces look like when the punishment arrives?")["concept"] \
+        and "رأي" not in [it["root"] for it in
+                          resolve("What will the disbelievers' faces look like when the punishment arrives?")["concept"]]
+
+
+def test_look_at_still_means_seeing():
+    assert "رأي" in [it["root"] for it in resolve("Where does the surah tell people to look at the sky?")["concept"]]
