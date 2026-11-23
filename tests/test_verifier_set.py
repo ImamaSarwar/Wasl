@@ -22,7 +22,11 @@ def test_every_designed_fault_is_caught():
     assert not missed, missed
 
 
-def test_known_gaps_are_labelled():
-    # if the verifier ever starts catching these, move the kind out of the gap list in make_faulty_drafts.py
-    gaps = [r for r in _run() if r["gap"]]
-    assert gaps and all(not r["rejected"] for r in gaps)
+def test_good_drafts_cover_several_styles():
+    kinds = {r["kind"] for r in rv.load() if r["expect"] == "pass"}
+    assert {"good", "good_form_count", "good_summary", "good_ayah_word", "good_compare"} <= kinds
+
+
+def test_arabic_word_and_count_level_faults_are_caught():
+    rows = [r for r in _run() if r["kind"] in ("unquoted_fake_arabic", "count_of_wrong_form")]
+    assert rows and all(r["rejected"] for r in rows)

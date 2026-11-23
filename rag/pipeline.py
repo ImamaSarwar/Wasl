@@ -96,7 +96,7 @@ def _summarise(ev):
         f"{', '.join(map(str, f['ayahs']))})" for f in ev["forms"])
     n = len(ev["forms"])
     return (f"The root {_root_label(ev['root'])} occurs {_times(ev['total'])} in Surah Al-Mulk, "
-            f"in {n} form{'s' if n != 1 else ''}: {forms}.")
+            f"in {n} word form{'s' if n != 1 else ''}: {forms}.")
 
 
 def _ayah_lines(ayahs, limit=6):

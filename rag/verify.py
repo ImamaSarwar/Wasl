@@ -7,6 +7,10 @@ Nothing the model says is trusted. An answer passes only if
   * every claim (ayah, root, lemma, gloss) matches a real word in the database evidence
   * every quoted phrase really appears in the evidence (a gloss or a translation)
   * every number it states is a count/ayah number from the evidence
+  * a count is the right KIND of count: "the root occurs N times" must be the root's total, "the form X
+    appears N times" that form's own count, "N forms" and "N ayahs" the numbers of forms and ayahs
+  * every Arabic word it writes is a word the evidence contains (the root, a lemma, a word of a listed
+    ayah, or something the learner typed)
   * it gives no rulings
 """
 import re
@@ -22,6 +26,12 @@ COUNT_PHRASE = re.compile(
     r"\b(once|twice|thrice|(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)"
     r"\s+(?:times|occurrences|instances|uses))\b", re.I)
 RULING = re.compile(r"\b(halal|haram|fatwa|forbidden|permissible|obligatory)\b", re.I)
+ARABIC_TOKEN = re.compile(r"[\u0600-\u06ff]+")
+SENTENCE = re.compile(r"(?<=[.!?])\s+|\n+")
+FORMS_PHRASE = re.compile(r"\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+"
+                          r"(?:different\s+|distinct\s+)?(?:word\s+)?(?:forms|lemmas)\b", re.I)
+AYAHS_PHRASE = re.compile(r"\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+"
+                          r"(?:different\s+|distinct\s+)?(?:ayahs|ayat|verses)\b", re.I)
 NUMWORDS = {"once": 1, "twice": 2, "thrice": 3, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
             "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12}
 
@@ -63,6 +73,24 @@ def _lemma_ok(claimed, hits):
     return len({h["lemma"] for h in hits if strip_arabic(h["lemma"] or "") == strip_arabic(claimed)}) == 1
 
 
+def _arabic_words(text):
+    """The Arabic words in a text, letters only, diacritics and tatweel removed; one-letter tokens skipped."""
+    out = []
+    for tok in ARABIC_TOKEN.findall(text or ""):
+        w = strip_arabic("".join(c for c in tok if unicodedata.category(c).startswith("L")))
+        if len(w) >= 2:
+            out.append(w)
+    return out
+
+
+def _arabic_known(word, known):
+    """A word is known if the evidence has it, with or without a leading و/ف/ب/ل/ك and ال."""
+    if word in known:
+        return True
+    bare = re.sub(r"^[وفبلك]?(?:ال)?", "", word)
+    return len(bare) >= 2 and (bare in known or ("ال" + bare) in known)
+
+
 def _ayah_int(x):
     try:
         return int(str(x).split(":")[-1])
@@ -72,25 +100,31 @@ def _ayah_int(x):
 
 def _index(intent, evidence, extra=None):
     """Everything the model is allowed to rely on."""
-    idx = {"ayahs": set(), "hits": {}, "counts": set(), "texts": [], "arabic": set()}
+    idx = {"ayahs": set(), "hits": {}, "counts": set(), "texts": [], "arabic": set(),
+           "ayah_arabic": {}, "evs": []}
     if intent == "semantic":
         for a in evidence:
             idx["ayahs"].add(a["ayah"])
             idx["texts"].append(a["translation"])
+            idx["ayah_arabic"][a["ayah"]] = set(_arabic_words(a.get("arabic")))
         return idx
     for a in extra or []:                  # ayahs found by meaning search that came with a root-based answer
         idx["ayahs"].add(a["ayah"])
         idx["texts"].append(a["translation"])
+        idx["ayah_arabic"][a["ayah"]] = set(_arabic_words(a.get("arabic")))
+    idx["evs"] = list(evidence)
     for ev in evidence:
         idx["counts"] |= {ev["total"], len(ev["forms"]), len(ev["ayahs"])}   # the evidence block states all three
         idx["arabic"].add(strip_arabic(ev["root"]))
         for f in ev["forms"]:
             idx["counts"].add(f["count"])
             idx["arabic"].add(strip_arabic(f["lemma"] or ""))
+            idx["arabic"] |= {strip_arabic(w or "") for w in f.get("words", [])}
             idx["texts"] += f.get("glosses", [])
         for a in ev["ayahs"]:
             idx["ayahs"].add(a["ayah"])
             idx["texts"].append(a["translation"])
+            idx["ayah_arabic"][a["ayah"]] = set(_arabic_words(a.get("arabic")))
             for h in a["hits"]:
                 idx["arabic"] |= {strip_arabic(h["word"] or ""), strip_arabic(h["lemma"] or "")}
                 idx["hits"].setdefault((ev["root"], a["ayah"]), []).append(h)
@@ -108,6 +142,66 @@ def cited_ayahs(data):
         if isinstance(c, dict) and _ayah_int(c.get("ayah")) is not None:
             found.add(_ayah_int(c["ayah"]))
     return sorted(found)
+
+
+def _numval(word):
+    return int(word) if word.isdigit() else NUMWORDS.get(word.lower())
+
+
+def _count_level_errors(answer, idx):
+    """Sentence by sentence: a count must be the right kind of count for what the sentence is about."""
+    errors = []
+    evs = idx["evs"]
+    if not evs:
+        return errors
+    forms_by_word, forms_exact = {}, {}      # lemma (no diacritics / with diacritics) -> counts of such forms
+    for ev in evs:
+        for f in ev["forms"]:
+            forms_by_word.setdefault(strip_arabic(f["lemma"] or ""), set()).add(f["count"])
+            forms_exact.setdefault(_canon(f["lemma"] or ""), set()).add(f["count"])
+    roots = {strip_arabic(ev["root"]): ev for ev in evs}
+    for sent in SENTENCE.split(CITE.sub(" ", answer)):
+        words = {w for w in _arabic_words(QUOTED.sub(" ", sent))}
+        phrases = list(COUNT_PHRASE.finditer(sent))
+        if len(phrases) == 1:
+            m = phrases[0]
+            word = m.group(2) or m.group(1)
+            n = _numval(word)
+            allowed = set()
+            for tok in ARABIC_TOKEN.findall(QUOTED.sub(" ", sent)):
+                w = strip_arabic("".join(c for c in tok if unicodedata.category(c).startswith("L")))
+                if len(w) < 2:
+                    continue
+                if _canon(tok) in forms_exact:          # written with diacritics: names one exact form
+                    allowed |= forms_exact[_canon(tok)]
+                else:
+                    allowed |= forms_by_word.get(w, set())
+                if w in roots:
+                    allowed.add(roots[w]["total"])
+            if not words and len(evs) == 1 and re.search(r"\broot\b", sent, re.I):
+                allowed.add(evs[0]["total"])
+            if allowed and n is not None and n not in allowed:
+                errors.append(f"the answer says '{m.group(0)}' about {'/'.join(sorted(words)) or 'the root'}, "
+                              f"but the evidence gives {sorted(allowed)} for that")
+        if len(evs) == 1:
+            for rx, want, label in ((FORMS_PHRASE, len(evs[0]["forms"]), "forms"),
+                                    (AYAHS_PHRASE, len(evs[0]["ayahs"]), "ayahs")):
+                for m in rx.finditer(sent):
+                    if _numval(m.group(1)) != want:
+                        errors.append(f"the answer says '{m.group(0)}', but the evidence has {want} {label}")
+    return errors
+
+
+def _arabic_errors(answer, cites, idx):
+    """Arabic words outside quotes must come from the evidence (quoted ones are checked separately)."""
+    known = set(idx["arabic"])
+    for n in cites:
+        known |= idx["ayah_arabic"].get(n, set())
+    bad = []
+    for w in _arabic_words(QUOTED.sub(" ", answer)):
+        if not _arabic_known(w, known) and w not in bad:
+            bad.append(w)
+    return [f"the answer writes the Arabic word {w}, which is not in the evidence" for w in bad[:3]]
 
 
 def check(raw, intent, evidence, question=None, extra=None):
@@ -174,6 +268,11 @@ def check(raw, intent, evidence, question=None, extra=None):
         if int(n) not in ok_numbers:
             errors.append(f"the answer states the number {n}, which is not in the evidence")
             break
+
+    errors += _count_level_errors(answer, idx)
+    known_extra = set(_arabic_words(question or ""))
+    errors += [e for e in _arabic_errors(answer, cites, idx)
+               if not any(w in known_extra for w in _arabic_words(e))]
 
     if RULING.search(answer):
         errors.append("the answer contains a religious ruling; this tool covers vocabulary only")

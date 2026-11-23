@@ -23,7 +23,9 @@ from rag.resolve import ALIASES, strip_arabic  # noqa: E402
 N_EXTRA = 12   # random single-form roots on top of every root that has 2+ forms
 FAKE_PHRASES = ["he who splits the moon", "the keeper of hidden gardens", "a mountain of silver",
                 "the people of the white river"]
-# fault kind -> (what is wrong, is it a known gap in the verifier?)
+# fault kind -> (gap, what is wrong). gap=True would mean "the verifier is not built to catch this yet";
+# the two kinds that used to be gaps (unquoted_fake_arabic, count_of_wrong_form) are now caught by the
+# Arabic-word check and the count-level check in rag/verify.py, so nothing is marked gap right now.
 KINDS = {
     "cites_ayah_not_in_evidence": (False, "[67:N] points at an ayah outside the evidence"),
     "claim_ayah_not_in_evidence": (False, "a structured claim names an ayah outside the evidence"),
@@ -38,8 +40,8 @@ KINDS = {
     "no_citation": (False, "cites no ayah at all"),
     "not_json": (False, "answers in plain prose instead of the JSON shape"),
     "bad_shape": (False, "JSON without the required refuse field"),
-    "unquoted_fake_arabic": (True, "names another root's Arabic word as if it belonged here, without quotes"),
-    "count_of_wrong_form": (True, "gives a real count, but of a different form than the one named"),
+    "unquoted_fake_arabic": (False, "names another root's Arabic word as if it belonged here, without quotes"),
+    "count_of_wrong_form": (False, "gives a real count, but of a different form than the one named"),
 }
 SEM_KINDS = ["cites_ayah_not_in_evidence", "fabricated_english_quote", "ruling", "no_citation"]
 
@@ -77,7 +79,7 @@ def make_root_drafts(root, other, rng):
 
     def add(kind, text, intent="single_root", roots=None, **kw):
         out.append({"id": f"{root}-{kind}", "root": root, "kind": kind, "intent": intent, "question": q,
-                    "roots": roots or [root], "raw": text, "expect": "pass" if kind == "good" else "reject",
+                    "roots": roots or [root], "raw": text, "expect": "pass" if kind.startswith("good") else "reject",
                     "gap": KINDS.get(kind, (False,))[0]})
 
     add("good", raw(answer=base, claims=[claim]))
@@ -124,6 +126,22 @@ def make_root_drafts(root, other, rng):
         if ca != cb:   # state the other form's real count for the form named
             add("count_of_wrong_form", raw(answer=f"The form {lb} appears {times(ca)} in the surah, for example in [67:{ayah}].",
                                            claims=[claim]))
+    # more GOOD drafts, written differently, so a stricter verifier is also tested for false rejections
+    f0 = ev["forms"][0]
+    fa = f0["ayahs"][0]
+    fh = next(x for x in [a for a in ev["ayahs"] if a["ayah"] == fa][0]["hits"] if x["lemma"] == f0["lemma"])
+    fclaim = {"ayah": fa, "root": root, "lemma": f0["lemma"], "gloss": fh["gloss"]}
+    add("good_form_count", raw(answer=f"The form {f0['lemma']} appears {times(f0['count'])} in the surah, for example in [67:{fa}].",
+                               claims=[fclaim]))
+    nf, na = len(ev["forms"]), len(ev["ayahs"])
+    add("good_summary", raw(answer=f"The root {root} occurs {times(ev['total'])}, in {nf} word form{'s' if nf != 1 else ''} "
+                                   f"across {na} ayah{'s' if na != 1 else ''}, for example in [67:{ayah}].", claims=[claim]))
+    add("good_ayah_word", raw(answer=f"In [67:{ayah}] the word {h['word']} is a form of the root {root}.", claims=[claim]))
+    ca, cb = ev["total"], ev2["total"]
+    add("good_compare", raw(answer=f"{root} occurs {times(ca)} (for example [67:{ayah}]), while {other} occurs {times(cb)} "
+                                   f"(for example [67:{ev2['ayahs'][0]['ayah']}]).",
+                            claims=[claim, {"ayah": ev2["ayahs"][0]["ayah"], "root": other}]),
+        intent="compare", roots=[root, other])
     return out
 
 
