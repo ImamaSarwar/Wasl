@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from . import queries, quiz
 from rag.pipeline import answer as rag_answer
+from rag.tutor import lesson as root_lesson
 
 app = FastAPI(title="Wasl - Quran Root Explorer (Surah Al-Mulk)")
 
@@ -55,6 +56,15 @@ def tree(root: str):
 @app.get("/api/roots/{root}/forms/{lemma}/ayahs")
 def form_ayahs(root: str, lemma: str):
     return queries.form_ayahs(root, lemma)
+
+
+@app.get("/api/roots/{root}/lesson")
+def lesson(root: str):
+    """Root Tutor: LLM-written lesson checked against the database; database-only lesson as fallback."""
+    res = root_lesson(root, use_llm=True)
+    if res is None:
+        raise HTTPException(404, f"root '{root}' does not occur in Surah Al-Mulk")
+    return res
 
 
 @app.get("/api/roots/{root}/distribution")
