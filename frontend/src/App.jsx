@@ -9,6 +9,8 @@ import HoverCard from "./components/HoverCard.jsx";
 import RootPanel from "./components/RootPanel.jsx";
 import AskBox from "./components/AskBox.jsx";
 import DebugPanel from "./components/DebugPanel.jsx";
+import ViewSwitch from "./components/ViewSwitch.jsx";
+import Quiz from "./components/Quiz.jsx";
 
 export default function App() {
   const [ayahs, setAyahs] = useState([]);
@@ -17,6 +19,8 @@ export default function App() {
   const [clickedId, setClickedId] = useState(null); // the exact word the user clicked (for a clear marker)
   const [hover, setHover] = useState(null);
   const [error, setError] = useState(null);
+  const [view, setView] = useState("read"); // "read" | "practice"
+  const pendingAyah = useRef(null); // ayah to scroll to once the reader is showing again
 
   // ---- recitation + tafsir ----
   const [reciters, setReciters] = useState([]);
@@ -128,6 +132,24 @@ export default function App() {
     document.getElementById(`ayah-${n}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
 
+  const changeView = useCallback((next) => {
+    if (next !== "read") player.stop();
+    setHover(null);
+    setView(next);
+  }, [player]);
+
+  const openInReader = useCallback((n) => {
+    pendingAyah.current = n;
+    changeView("read");
+  }, [changeView]);
+
+  useEffect(() => {
+    if (view === "read" && pendingAyah.current != null) {
+      jumpToAyah(pendingAyah.current);
+      pendingAyah.current = null;
+    }
+  }, [view, jumpToAyah]);
+
   return (
     <div className="app">
       <header>
@@ -135,9 +157,12 @@ export default function App() {
         <p className="tagline">Quran Root Explorer <span>·</span> Surah Al-Mulk</p>
       </header>
 
+      <ViewSwitch view={view} onChange={changeView} />
+
       {error && <p className="error banner">{error}</p>}
 
-      <main>
+      {/* Both views stay mounted (only hidden), so a quiz in progress and your place in the reader are kept. */}
+      <main hidden={view !== "read"}>
         <section className="reader card">
           <ReaderHeader reciters={reciters} reciterId={reciterId} onChangeReciter={changeReciter} player={player}
                         noteCount={notes.count} onExportNotes={exportNotes} />
@@ -176,6 +201,10 @@ export default function App() {
           <DebugPanel />
         </aside>
       </main>
+
+      <div hidden={view !== "practice"}>
+        <Quiz ayahsByNum={ayahsByNum} onOpenAyah={openInReader} />
+      </div>
 
       <footer>
         Data: Quranic Arabic Corpus (Kais Dukes, GPL), quran-morphology (mustafa0x), Tanzil.net (text unmodified).

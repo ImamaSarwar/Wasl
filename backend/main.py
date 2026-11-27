@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import queries
+from . import queries, quiz
 from rag.pipeline import answer as rag_answer
 
 app = FastAPI(title="Wasl - Quran Root Explorer (Surah Al-Mulk)")
@@ -91,6 +91,14 @@ def tafsir(source_id: str, ayah: int):
     if t is None:
         raise HTTPException(404, "no commentary for this ayah")
     return t
+
+
+@app.get("/api/quiz")
+def quiz_questions(level: str = "easy", seed: int | None = None):
+    """Multiple-choice quiz built from the database. level: easy | intermediate | hard."""
+    if level not in quiz.LEVELS:
+        raise HTTPException(404, f"unknown level '{level}'")
+    return quiz.build_quiz(level, seed)
 
 
 class AskRequest(BaseModel):

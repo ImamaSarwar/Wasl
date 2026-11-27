@@ -1,0 +1,965 @@
+diff --git a/backend/main.py b/backend/main.py
+index 4a53ce9..70e8664 100644
+--- a/backend/main.py
++++ b/backend/main.py
+@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
+ from fastapi.middleware.cors import CORSMiddleware
+ from pydantic import BaseModel
+ 
+-from . import queries
++from . import queries, quiz
+ from rag.pipeline import answer as rag_answer
+ 
+ app = FastAPI(title="Wasl - Quran Root Explorer (Surah Al-Mulk)")
+@@ -93,6 +93,14 @@ def tafsir(source_id: str, ayah: int):
+     return t
+ 
+ 
++@app.get("/api/quiz")
++def quiz_questions(level: str = "easy", seed: int | None = None):
++    """Multiple-choice quiz built from the database. level: easy | intermediate | hard."""
++    if level not in quiz.LEVELS:
++        raise HTTPException(404, f"unknown level '{level}'")
++    return quiz.build_quiz(level, seed)
++
++
+ class AskRequest(BaseModel):
+     question: str
+ 
+diff --git a/backend/quiz.py b/backend/quiz.py
+new file mode 100644
+index 0000000..ba5a665
+--- /dev/null
++++ b/backend/quiz.py
+@@ -0,0 +1,269 @@
++"""
++Quiz generator for Surah Al-Mulk. Every question, option, answer key and explanation comes from
++data/quran.db. No language model is involved.
++
++    build_quiz("easy" | "intermediate" | "hard", seed=None) -> {"level", "seed", "questions": [...]}
++
++Four question types:
++  vocabulary  word -> meaning
++  root        word -> root letters
++  morphology  verb tense, verb person, or noun case
++  contextual  root -> the ayah(s) it appears in. When two shown ayahs are both right, the one correct
++              option is "Both A and B".
++
++Rule: every question has exactly ONE correct option.
++"""
++import random
++import re
++
++from . import queries
++from .grammar import PERSON
++
++# level -> how many questions of each type
++LEVELS = {
++    "easy": {"vocabulary": 5, "root": 5},
++    "intermediate": {"vocabulary": 5, "root": 5, "morphology": 5},
++    "hard": {"vocabulary": 6, "root": 6, "morphology": 6, "contextual": 6},
++}
++
++TENSES = {"PERF": "Past (māḍī)", "IMPF": "Present / future (muḍāriʿ)", "IMPV": "Command (amr)"}
++CASES = {"NOM": "Nominative (marfūʿ)", "ACC": "Accusative (manṣūb)", "GEN": "Genitive (majrūr)"}
++BOTH = "Both A and B"
++
++# Roots whose meanings in this surah are close enough that one could pass for the other. A meaning from
++# the same group is never offered as a wrong option. Extend this if a quiz shows a debatable pair.
++SIMILAR_ROOTS = [set(g.split()) for g in (
++    "رأي بصر",
++    "علم خبر عرف عقل",
++    "عذب سعر ألم",
++    "كفر كذب نكر",
++    "خلق فطر ذرأ نشأ جعل",
++    "فطر فوت",
++    "سمو فوق طبق صفف",
++    "رجع قلب صير كرر",
++    "ضلل غرر",
++    "عتو نفر لجج",
++    "رزق أجر أكل",
++    "رسل نزل",
++    "قول دعو سأل جهر",
++    "أتي جيأ",
++    "رحم لطف غفر",
++    "قدر عزز كبر ملك",
++    "صرط نكب مشي",
++    "سوي قوم هدي",
++    "حشر نشر",
++    "دنو زلف عند قبل دون",
++    "موت هلك",
++    "صدر فأد",
++    "جند صحب فوج",
++    "بأس سوأ",
++    "سرر غيب",
++    "جهر بين",
++    "غيظ فور",
++    "مسك قبض",
++)]
++
++_STOPWORDS = set("""a an the of and or so is are was were be been am in on to for with from by at as that
++this which who whom his her their your our my its he she it they we you i them him us me will would
++could can may might has have had do does did not no then but if every come came""".split())
++
++
++def _stems(gloss):
++    """Rough content-word keys of a meaning: "(the) creation" and "created" both give {"crea"}."""
++    return {w[:4] for w in re.findall(r"[a-z]+", gloss.lower()) if w not in _STOPWORDS}
++
++
++def _similar(root_a, root_b):
++    return root_a == root_b or any(root_a in g and root_b in g for g in SIMILAR_ROOTS)
++
++
++def _load():
++    return queries._rows(
++        "SELECT w.word_id, w.ayah, w.pos, w.arabic, w.root, w.lemma, w.pos_tag, w.grammar, w.gloss, "
++        "a.arabic AS ayah_arabic FROM words w JOIN ayahs a USING(ayah) ORDER BY w.ayah, w.pos")
++
++
++def _codes(word):
++    return set((word["grammar"] or "").split(","))
++
++
++def _spaced(root):
++    return " ".join(root)
++
++
++def _word_ref(w):
++    return {"arabic": w["arabic"], "word_id": w["word_id"], "ayah": w["ayah"]}
++
++
++def _options(rng, correct, wrong, lang="en"):
++    """Shuffle one correct and some wrong options. -> (options, id of the correct one)"""
++    texts = [correct] + list(wrong)
++    rng.shuffle(texts)
++    options = [{"id": "ABCD"[i], "text": t, "lang": lang} for i, t in enumerate(texts)]
++    return options, next(o["id"] for o in options if o["text"] == correct)
++
++
++# ---------- one builder per question type: return a question dict, or None if this word can't make one ----------
++
++def _vocabulary(rng, w, words, level):
++    if not w["gloss"]:
++        return None
++    mine = _stems(w["gloss"])
++    pool = [x for x in words if x["root"] and x["gloss"] and not _similar(x["root"], w["root"])]
++    rng.shuffle(pool)
++    if level != "easy":    # harder: wrong meanings come from the same kind of word (verb / noun)
++        pool.sort(key=lambda x: x["pos_tag"] != w["pos_tag"])
++    wrong, used_stems, used_roots = [], set(mine), set()
++    for x in pool:
++        s = _stems(x["gloss"])
++        if not s or s & used_stems or x["root"] in used_roots:
++            continue
++        wrong.append(x["gloss"])
++        used_stems |= s
++        used_roots.add(x["root"])
++        if len(wrong) == 3:
++            break
++    if len(wrong) < 3:
++        return None
++    options, answer = _options(rng, w["gloss"], wrong)
++    return {"type": "vocabulary", "prompt": "What does this word mean here?", "word": _word_ref(w),
++            "options": options, "answer": answer, "root": w["root"], "refs": [w["ayah"]],
++            "explanation": f'In ayah {w["ayah"]}, {w["arabic"]} means "{w["gloss"]}". '
++                           f'Its root is {_spaced(w["root"])}.'}
++
++
++def _root(rng, w, words, level):
++    others = sorted({x["root"] for x in words if x["root"] and x["root"] != w["root"]})
++    rng.shuffle(others)
++    if level != "easy":    # harder: wrong roots share letters with the right one
++        others.sort(key=lambda r: -len(set(r) & set(w["root"])))
++    options, answer = _options(rng, _spaced(w["root"]), [_spaced(r) for r in others[:3]], lang="ar")
++    return {"type": "root", "prompt": "Which root does this word come from?", "word": _word_ref(w),
++            "options": options, "answer": answer, "root": w["root"], "refs": [w["ayah"]],
++            "explanation": f'{w["arabic"]} ("{w["gloss"]}") comes from the root {_spaced(w["root"])}.'}
++
++
++def _morphology_kinds(w):
++    """The grammar questions this word can answer: only features stored for it in the database."""
++    codes = _codes(w)
++    if w["pos_tag"] == "V":
++        kinds = []
++        if len(codes & TENSES.keys()) == 1:
++            kinds.append("tense")
++        if len(codes & PERSON.keys()) == 1:
++            kinds.append("person")
++        return kinds
++    if w["pos_tag"] == "N" and len(codes & CASES.keys()) == 1 and not codes & {"PRON", "REL", "DEM"}:
++        return ["case"]
++    return []
++
++
++def _morphology(rng, w, words, level, kind):
++    codes = _codes(w)
++    if kind == "tense":
++        table, prompt = TENSES, "Which verb tense is this word?"
++    elif kind == "case":
++        table, prompt = CASES, "Which grammatical case is this noun in?"
++    else:
++        table = {c: f"{plain[0].upper()}{plain[1:]}: {tech}" for c, (plain, tech) in PERSON.items()}
++        prompt = "Which person is marked on this verb?"
++    code = next(iter(codes & table.keys()))
++    if kind == "person":
++        # only offer persons that really occur on verbs in this surah
++        seen = sorted({c for x in words if x["pos_tag"] == "V" for c in _codes(x) & PERSON.keys()} - {code})
++        wrong = rng.sample(seen, 3)
++    else:
++        wrong = [c for c in table if c != code]
++    options, answer = _options(rng, table[code], [table[c] for c in wrong])
++    return {"type": "morphology", "kind": kind, "prompt": prompt, "word": _word_ref(w),
++            "options": options, "answer": answer, "root": w["root"], "refs": [w["ayah"]],
++            "explanation": f'In ayah {w["ayah"]}, {w["arabic"]} ("{w["gloss"]}") is recorded as: {table[code]}.'}
++
++
++def _contextual(rng, root, words, both):
++    hits = sorted({x["ayah"] for x in words if x["root"] == root})
++    ayah_text = {x["ayah"]: x["ayah_arabic"] for x in words}
++    misses = sorted(set(ayah_text) - set(hits))
++    if both:
++        if len(hits) < 2:
++            return None
++        shown = rng.sample(hits, 2) + rng.sample(misses, 1)     # A and B right, C wrong
++        answer, right = "D", sorted(shown[:2])
++    else:
++        correct = rng.choice(hits)
++        shown = rng.sample(misses, 2)
++        place = rng.randrange(3)
++        shown.insert(place, correct)                            # exactly one of A, B, C is right
++        answer, right = "ABC"[place], [correct]
++    options = [{"id": "ABC"[i], "text": ayah_text[n], "lang": "ar", "ayah": n} for i, n in enumerate(shown)]
++    options.append({"id": "D", "text": BOTH, "lang": "en"})
++    found = "; ".join(f'ayah {n}: ' + "، ".join(x["arabic"] for x in words if x["root"] == root and x["ayah"] == n)
++                      for n in right)
++    return {"type": "contextual", "prompt": "Which ayah contains a word from this root?", "word": None,
++            "options": options, "answer": answer, "root": root, "refs": right,
++            "explanation": f"The root {_spaced(root)} appears in {found}."}
++
++
++def build_quiz(level, seed=None):
++    if level not in LEVELS:
++        raise ValueError(f"unknown level '{level}'")
++    if seed is None:
++        seed = random.randrange(1_000_000_000)
++    rng = random.Random(f"{level}:{seed}")
++    words = _load()
++    rooted = [w for w in words if w["root"]]
++    counts = {}
++    for w in rooted:
++        counts[w["root"]] = counts.get(w["root"], 0) + 1
++
++    questions, used_roots = [], set()   # one question per root, so no question gives away another
++    plan = LEVELS[level]
++
++    # contextual first: its "Both A and B" form needs roots found in two or more ayahs
++    roots = sorted(counts)
++    rng.shuffle(roots)
++    for i in range(plan.get("contextual", 0)):
++        both = i % 2 == 0
++        for root in roots:
++            if root in used_roots:
++                continue
++            q = _contextual(rng, root, words, both)
++            if q:
++                questions.append(q)
++                used_roots.add(root)
++                break
++
++    # morphology next (fewest suitable words), taking tense / person / case in turn
++    kinds = ["tense", "case", "person"]
++    rng.shuffle(kinds)
++    for i in range(plan.get("morphology", 0)):
++        kind = kinds[i % len(kinds)]
++        pool = [w for w in rooted if w["root"] not in used_roots and kind in _morphology_kinds(w)]
++        if not pool:
++            pool = [w for w in rooted if w["root"] not in used_roots and _morphology_kinds(w)]
++            kind = None
++        w = rng.choice(pool)
++        questions.append(_morphology(rng, w, words, level, kind or _morphology_kinds(w)[0]))
++        used_roots.add(w["root"])
++
++    for qtype, builder in (("vocabulary", _vocabulary), ("root", _root)):
++        pool = rooted[:]
++        rng.shuffle(pool)
++        if level == "easy":     # easy: words whose root comes up more than once in the surah
++            pool.sort(key=lambda w: counts[w["root"]] < 2)
++        made = 0
++        for w in pool:
++            if made == plan.get(qtype, 0):
++                break
++            if w["root"] in used_roots:
++                continue
++            q = builder(rng, w, words, level)
++            if q:
++                questions.append(q)
++                used_roots.add(w["root"])
++                made += 1
++
++    rng.shuffle(questions)
++    for i, q in enumerate(questions, 1):
++        q["id"] = i
++    return {"level": level, "seed": seed, "questions": questions}
+diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
+index a0d18eb..17d306a 100644
+--- a/frontend/src/App.jsx
++++ b/frontend/src/App.jsx
+@@ -9,6 +9,8 @@ import HoverCard from "./components/HoverCard.jsx";
+ import RootPanel from "./components/RootPanel.jsx";
+ import AskBox from "./components/AskBox.jsx";
+ import DebugPanel from "./components/DebugPanel.jsx";
++import ViewSwitch from "./components/ViewSwitch.jsx";
++import Quiz from "./components/Quiz.jsx";
+ 
+ export default function App() {
+   const [ayahs, setAyahs] = useState([]);
+@@ -17,6 +19,8 @@ export default function App() {
+   const [clickedId, setClickedId] = useState(null); // the exact word the user clicked (for a clear marker)
+   const [hover, setHover] = useState(null);
+   const [error, setError] = useState(null);
++  const [view, setView] = useState("read"); // "read" | "practice"
++  const pendingAyah = useRef(null); // ayah to scroll to once the reader is showing again
+ 
+   // ---- recitation + tafsir ----
+   const [reciters, setReciters] = useState([]);
+@@ -128,6 +132,24 @@ export default function App() {
+     document.getElementById(`ayah-${n}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+   }, []);
+ 
++  const changeView = useCallback((next) => {
++    if (next !== "read") player.stop();
++    setHover(null);
++    setView(next);
++  }, [player]);
++
++  const openInReader = useCallback((n) => {
++    pendingAyah.current = n;
++    changeView("read");
++  }, [changeView]);
++
++  useEffect(() => {
++    if (view === "read" && pendingAyah.current != null) {
++      jumpToAyah(pendingAyah.current);
++      pendingAyah.current = null;
++    }
++  }, [view, jumpToAyah]);
++
+   return (
+     <div className="app">
+       <header>
+@@ -135,9 +157,12 @@ export default function App() {
+         <p className="tagline">Quran Root Explorer <span>·</span> Surah Al-Mulk</p>
+       </header>
+ 
++      <ViewSwitch view={view} onChange={changeView} />
++
+       {error && <p className="error banner">{error}</p>}
+ 
+-      <main>
++      {/* Both views stay mounted (only hidden), so a quiz in progress and your place in the reader are kept. */}
++      <main hidden={view !== "read"}>
+         <section className="reader card">
+           <ReaderHeader reciters={reciters} reciterId={reciterId} onChangeReciter={changeReciter} player={player}
+                         noteCount={notes.count} onExportNotes={exportNotes} />
+@@ -177,6 +202,10 @@ export default function App() {
+         </aside>
+       </main>
+ 
++      <div hidden={view !== "practice"}>
++        <Quiz ayahsByNum={ayahsByNum} onOpenAyah={openInReader} />
++      </div>
++
+       <footer>
+         Data: Quranic Arabic Corpus (Kais Dukes, GPL), quran-morphology (mustafa0x), Tanzil.net (text unmodified).
+         Recitations and tafsir via Tarteel QUL; audio is streamed from the links in those files.
+diff --git a/frontend/src/api.js b/frontend/src/api.js
+index 5a5b8cd..46e3503 100644
+--- a/frontend/src/api.js
++++ b/frontend/src/api.js
+@@ -36,5 +36,6 @@ export const api = {
+   recitations: (reciterId) => request("GET", `/api/recitations/${enc(reciterId)}`),
+   tafsirSources: () => request("GET", "/api/tafsir"),
+   tafsir: (sourceId, ayah) => request("GET", `/api/tafsir/${enc(sourceId)}/${ayah}`),
++  quiz: (level) => request("GET", `/api/quiz?level=${enc(level)}`),
+   ask: (question) => request("POST", "/api/ask", { question }),
+ };
+diff --git a/frontend/src/components/Quiz.jsx b/frontend/src/components/Quiz.jsx
+new file mode 100644
+index 0000000..a2c9bf9
+--- /dev/null
++++ b/frontend/src/components/Quiz.jsx
+@@ -0,0 +1,234 @@
++import { useEffect, useRef, useState } from "react";
++import { api } from "../api.js";
++import { getStorage } from "../notesStore.js";
++import { makeAttempt, saveAttempt } from "../quizStore.js";
++
++// The practice area: choose a level -> answer one question at a time -> see the result.
++// Questions and answer keys come from the database (GET /api/quiz); no language model is involved.
++
++const LEVELS = [
++  { id: "easy", numeral: "I", name: "Easy", count: 10, about: "Word meanings and roots" },
++  { id: "intermediate", numeral: "II", name: "Intermediate", count: 15, about: "Meanings, roots and grammar" },
++  { id: "hard", numeral: "III", name: "Hard", count: 24, about: "Meanings, roots, grammar and verses in context" },
++];
++const TYPE_NAMES = { vocabulary: "Vocabulary", root: "Root", morphology: "Grammar", contextual: "Context" };
++
++export default function Quiz({ ayahsByNum, onOpenAyah }) {
++  const [quiz, setQuiz] = useState(null);
++  const [index, setIndex] = useState(0);
++  const [answers, setAnswers] = useState([]); // chosen option id per question
++  const [loading, setLoading] = useState(null);
++  const [error, setError] = useState(null);
++  const top = useRef(null);
++
++  async function start(level) {
++    setLoading(level);
++    setError(null);
++    try {
++      const next = await api.quiz(level);
++      setQuiz(next);
++      setIndex(0);
++      setAnswers([]);
++    } catch {
++      setError("Could not load the quiz. Check that the backend is running, then try again.");
++    } finally {
++      setLoading(null);
++    }
++  }
++
++  // Bring the top of the card back into view when the screen changes.
++  useEffect(() => {
++    if (top.current?.getBoundingClientRect().top < 0) top.current.scrollIntoView({ block: "start" });
++  }, [index, quiz]);
++
++  function choose(id) {
++    if (answers[index]) return; // one answer per question
++    setAnswers((prev) => { const next = [...prev]; next[index] = id; return next; });
++    saveAttempt(getStorage(), makeAttempt(quiz.level, quiz.questions[index], id));
++  }
++
++  let screen;
++  if (!quiz) {
++    screen = <LevelPicker onStart={start} loading={loading} />;
++  } else if (index >= quiz.questions.length) {
++    screen = <Result quiz={quiz} answers={answers} loading={loading} onRetry={() => start(quiz.level)}
++                     onChangeLevel={() => setQuiz(null)} onOpenAyah={onOpenAyah} />;
++  } else {
++    screen = <Question key={`${quiz.seed}-${index}`} quiz={quiz} index={index} chosen={answers[index]}
++                       ayahsByNum={ayahsByNum} onChoose={choose} onNext={() => setIndex(index + 1)}
++                       onQuit={() => setQuiz(null)} onOpenAyah={onOpenAyah} />;
++  }
++
++  return (
++    <div className="quiz" ref={top}>
++      {error && <p className="error banner" role="alert">{error}</p>}
++      {screen}
++    </div>
++  );
++}
++
++function LevelPicker({ onStart, loading }) {
++  return (
++    <section className="card quiz-card quiz-intro">
++      <span className="title-ar" lang="ar" dir="rtl">اختبر نفسك</span>
++      <h2>Test your understanding</h2>
++      <p className="hint">Multiple-choice questions drawn from Surah Al-Mulk. Choose a level to begin.</p>
++      <div className="levels">
++        {LEVELS.map((l) => (
++          <button key={l.id} className="level" onClick={() => onStart(l.id)} disabled={!!loading}>
++            <span className="level-numeral" aria-hidden="true">{l.numeral}</span>
++            <span className="level-name">{l.name}</span>
++            <span className="level-about">{l.about}</span>
++            <span className="level-count">{loading === l.id ? "Preparing..." : `${l.count} questions`}</span>
++          </button>
++        ))}
++      </div>
++    </section>
++  );
++}
++
++// The ayah with the words of interest marked.
++function Verse({ ayah, wordId, root }) {
++  if (!ayah) return null;
++  return (
++    <p className="arabic verse" dir="rtl" lang="ar">
++      {ayah.words.map((w) => (
++        <span key={w.word_id}
++              className={w.word_id === wordId || (root && w.root === root) ? "marked" : undefined}>
++          {w.arabic}{w.trail ? ` ${w.trail}` : ""}{" "}
++        </span>
++      ))}
++    </p>
++  );
++}
++
++function Question({ quiz, index, chosen, ayahsByNum, onChoose, onNext, onQuit, onOpenAyah }) {
++  const q = quiz.questions[index];
++  const total = quiz.questions.length;
++  const done = !!chosen;
++  const right = chosen === q.answer;
++  const level = LEVELS.find((l) => l.id === quiz.level);
++  const next = useRef(null);
++  useEffect(() => { if (done) next.current?.focus({ preventScroll: true }); }, [done]);
++
++  // "Both A and B" is right: A and B are then correct too, so show them that way.
++  const bothRight = q.type === "contextual" && q.answer === "D";
++  const stateOf = (id) => {
++    if (!done) return "";
++    if (id === q.answer || (bothRight && (id === "A" || id === "B"))) return " correct";
++    return id === chosen ? " wrong" : " dim";
++  };
++
++  return (
++    <section className="card quiz-card">
++      <div className="quiz-top">
++        <span>{level.name} <i>·</i> {TYPE_NAMES[q.type]}</span>
++        <span>{index + 1} of {total}</span>
++        <button className="notes-link" onClick={onQuit}>Leave quiz</button>
++      </div>
++      <div className="quiz-progress" role="progressbar" aria-valuemin="0" aria-valuemax={total}
++           aria-valuenow={index + (done ? 1 : 0)}>
++        <span style={{ width: `${((index + (done ? 1 : 0)) / total) * 100}%` }} />
++      </div>
++
++      <h2 className="quiz-prompt">{q.prompt}</h2>
++      {q.word ? (
++        <div className="quiz-subject">
++          <div className="quiz-word" dir="rtl" lang="ar">{q.word.arabic}</div>
++          <div className="quiz-ref">Ayah {q.word.ayah}</div>
++        </div>
++      ) : (
++        <div className="quiz-subject">
++          <div className="quiz-word spaced" dir="rtl" lang="ar">{[...q.root].join(" ")}</div>
++          <div className="quiz-ref">If two answers are right, choose "Both A and B".</div>
++        </div>
++      )}
++
++      <div className={"options" + (q.type === "contextual" ? " verses" : "")}>
++        {q.options.map((o) => (
++          <button key={o.id} className={"option" + stateOf(o.id) + (o.id === chosen ? " picked" : "")}
++                  onClick={() => onChoose(o.id)} aria-disabled={done} aria-pressed={o.id === chosen}>
++            <span className="option-key">{o.id}</span>
++            <span className={"option-text" + (o.lang === "ar" ? " ar" : "")} lang={o.lang}
++                  dir={o.lang === "ar" ? "rtl" : "ltr"}>
++              {o.text}
++              {done && o.ayah && <small dir="ltr" lang="en">Ayah {o.ayah}</small>}
++            </span>
++          </button>
++        ))}
++      </div>
++
++      {done && (
++        <div className={"feedback" + (right ? " good" : " bad")} role="status">
++          <h3>{right ? "Correct" : "Not quite"}</h3>
++          <p dir="ltr">{q.explanation}</p>
++          {q.refs.map((n) => (
++            <div className="feedback-verse" key={n}>
++              <Verse ayah={ayahsByNum[n]} wordId={q.word?.word_id} root={q.word ? null : q.root} />
++              <p className="translation">{ayahsByNum[n]?.translation}</p>
++              <button className="notes-link" onClick={() => onOpenAyah(n)}>Open ayah {n} in the reader</button>
++            </div>
++          ))}
++        </div>
++      )}
++
++      {done && (
++        <div className="quiz-foot">
++          <button ref={next} className="btn-royal" onClick={onNext}>
++            {index + 1 === total ? "See result" : "Next question"}
++          </button>
++        </div>
++      )}
++    </section>
++  );
++}
++
++function Result({ quiz, answers, loading, onRetry, onChangeLevel, onOpenAyah }) {
++  const qs = quiz.questions;
++  const isRight = (q, i) => answers[i] === q.answer;
++  const score = qs.filter(isRight).length;
++  const missed = qs.map((q, i) => ({ q, i })).filter(({ q, i }) => !isRight(q, i));
++  const types = Object.keys(TYPE_NAMES).filter((t) => qs.some((q) => q.type === t));
++
++  return (
++    <section className="card quiz-card quiz-result">
++      <h3>{LEVELS.find((l) => l.id === quiz.level).name} quiz complete</h3>
++      <div className="score"><b>{score}</b><span>of {qs.length}</span></div>
++
++      <dl className="breakdown">
++        {types.map((t) => {
++          const mine = qs.map((q, i) => [q, i]).filter(([q]) => q.type === t);
++          const ok = mine.filter(([q, i]) => isRight(q, i)).length;
++          return (
++            <div key={t}>
++              <dt>{TYPE_NAMES[t]}</dt>
++              <dd className="meter"><span style={{ width: `${(ok / mine.length) * 100}%` }} /></dd>
++              <dd className="tally">{ok}/{mine.length}</dd>
++            </div>
++          );
++        })}
++      </dl>
++
++      <div className="quiz-foot centre">
++        <button className="btn-royal" onClick={onRetry} disabled={!!loading}>New {quiz.level} quiz</button>
++        <button className="btn-royal on" onClick={onChangeLevel}>Change level</button>
++      </div>
++
++      {missed.length > 0 && (
++        <div className="review">
++          <h3>To revise</h3>
++          <ul>
++            {missed.map(({ q }) => (
++              <li key={q.id}>
++                <p dir="ltr">{q.explanation}</p>
++                {q.refs.map((n) => (
++                  <button key={n} className="notes-link" onClick={() => onOpenAyah(n)}>Ayah {n}</button>
++                ))}
++              </li>
++            ))}
++          </ul>
++        </div>
++      )}
++    </section>
++  );
++}
+diff --git a/frontend/src/components/ViewSwitch.jsx b/frontend/src/components/ViewSwitch.jsx
+new file mode 100644
+index 0000000..45ce78e
+--- /dev/null
++++ b/frontend/src/components/ViewSwitch.jsx
+@@ -0,0 +1,18 @@
++// The one piece of navigation: a quiet two-way switch under the title.
++const VIEWS = [
++  { id: "read", label: "Read" },
++  { id: "practice", label: "Practice" },
++];
++
++export default function ViewSwitch({ view, onChange }) {
++  return (
++    <nav className={"view-switch " + view} aria-label="Sections">
++      {VIEWS.map((v) => (
++        <button key={v.id} className={view === v.id ? "on" : ""} aria-current={view === v.id ? "page" : undefined}
++                onClick={() => onChange(v.id)}>
++          {v.label}
++        </button>
++      ))}
++    </nav>
++  );
++}
+diff --git a/frontend/src/quizStore.js b/frontend/src/quizStore.js
+new file mode 100644
+index 0000000..c31b358
+--- /dev/null
++++ b/frontend/src/quizStore.js
+@@ -0,0 +1,48 @@
++// Pure helpers for quiz results (no React, no browser globals), so they can be unit-tested with `npm test`.
++// Results live in the browser's localStorage on this device only: no account, no server.
++// The future dashboard reads this list; scores, learned roots and confused forms can all be derived from it.
++//
++// Stored shape: [{ level, type, kind, root, wordId, answer, chosen, correct, time }, ...]
++
++export const QUIZ_KEY = "wasl.quiz.v1";
++export const MAX_ATTEMPTS = 2000; // oldest are dropped beyond this
++
++const textOf = (q, id) => {
++  const o = q.options.find((x) => x.id === id);
++  return o?.ayah ? `67:${o.ayah}` : o?.text ?? null;
++};
++
++export function makeAttempt(level, q, chosenId, now = new Date()) {
++  return {
++    level,
++    type: q.type,
++    kind: q.kind ?? null,
++    root: q.root,
++    wordId: q.word?.word_id ?? null,
++    answer: textOf(q, q.answer),
++    chosen: textOf(q, chosenId),
++    correct: chosenId === q.answer,
++    time: now.toISOString(),
++  };
++}
++
++/** Never throws: blocked storage or corrupt data gives an empty list. */
++export function loadAttempts(storage) {
++  try {
++    const list = JSON.parse(storage.getItem(QUIZ_KEY) || "[]");
++    return Array.isArray(list) ? list.filter((a) => a && typeof a.correct === "boolean") : [];
++  } catch {
++    return [];
++  }
++}
++
++/** Append one attempt. Returns false if it could not be saved. */
++export function saveAttempt(storage, attempt) {
++  try {
++    const list = [...loadAttempts(storage), attempt].slice(-MAX_ATTEMPTS);
++    storage.setItem(QUIZ_KEY, JSON.stringify(list));
++    return true;
++  } catch {
++    return false;
++  }
++}
+diff --git a/frontend/src/quizStore.test.js b/frontend/src/quizStore.test.js
+new file mode 100644
+index 0000000..3c6513b
+--- /dev/null
++++ b/frontend/src/quizStore.test.js
+@@ -0,0 +1,41 @@
++import test from "node:test";
++import assert from "node:assert/strict";
++import { MAX_ATTEMPTS, QUIZ_KEY, loadAttempts, makeAttempt, saveAttempt } from "./quizStore.js";
++
++const fake = (initial) => {
++  const m = new Map(initial ? [[QUIZ_KEY, initial]] : []);
++  return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v) };
++};
++const q = {
++  type: "root", root: "خلق", word: { word_id: 11 }, answer: "B",
++  options: [{ id: "A", text: "م ل ك" }, { id: "B", text: "خ ل ق" }],
++};
++
++test("an attempt records what was chosen and whether it was right", () => {
++  const a = makeAttempt("easy", q, "A", new Date("2026-11-26T10:00:00Z"));
++  assert.equal(a.correct, false);
++  assert.equal(a.chosen, "م ل ك");
++  assert.equal(a.answer, "خ ل ق");
++  assert.equal(a.wordId, 11);
++});
++
++test("attempts are appended and read back", () => {
++  const s = fake();
++  assert.equal(saveAttempt(s, makeAttempt("easy", q, "B")), true);
++  saveAttempt(s, makeAttempt("easy", q, "A"));
++  assert.deepEqual(loadAttempts(s).map((a) => a.correct), [true, false]);
++});
++
++test("old attempts are dropped beyond the limit", () => {
++  const s = fake(JSON.stringify(Array(MAX_ATTEMPTS).fill({ correct: true })));
++  saveAttempt(s, { correct: false });
++  const list = loadAttempts(s);
++  assert.equal(list.length, MAX_ATTEMPTS);
++  assert.equal(list.at(-1).correct, false);
++});
++
++test("corrupt or blocked storage never throws", () => {
++  assert.deepEqual(loadAttempts(fake("not json")), []);
++  assert.deepEqual(loadAttempts(null), []);
++  assert.equal(saveAttempt(null, { correct: true }), false);
++});
+diff --git a/frontend/src/styles.css b/frontend/src/styles.css
+index db4d70f..aed4ec4 100644
+--- a/frontend/src/styles.css
++++ b/frontend/src/styles.css
+@@ -24,13 +24,13 @@
+ body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+ 
+ .app { max-width: 1280px; margin: 0 auto; padding: 0 16px 32px; }
+-.app > header { text-align: center; padding: 26px 0 20px; }
++.app > header { text-align: center; padding: 26px 0 14px; }
+ .app > header h1 { margin: 0; font-family: var(--serif); font-weight: 600; font-size: 44px; letter-spacing: .16em; text-transform: uppercase; color: var(--navy); line-height: 1.1; }
+ .tagline { margin: 6px 0 0; font-size: 12px; letter-spacing: .28em; text-transform: uppercase; color: var(--gold-deep); }
+ .tagline span { margin: 0 8px; color: var(--gold-line); }
+-.app > header::after { content: ""; display: block; width: 72px; height: 1px; margin: 16px auto 0; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+ footer { margin-top: 24px; font-size: 12px; color: var(--muted); }
+ 
++[hidden] { display: none !important; }
+ main { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+ aside { position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; display: grid; gap: 16px; }
+ @media (max-width: 900px) { main { grid-template-columns: 1fr; } aside { position: static; max-height: none; } }
+@@ -219,3 +219,88 @@ select, input { font: inherit; padding: 6px 8px; border: 1px solid var(--border)
+ 
+ .export-btn { align-self: flex-end; font: inherit; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold-deep); background: none; border: 0; border-bottom: 1px solid var(--gold-line); padding: 8px 2px 6px; cursor: pointer; }
+ .export-btn:hover { color: var(--navy); border-bottom-color: var(--navy); }
++
++/* ===== Read / Practice switch (between two hairlines that fade out) ===== */
++.view-switch { display: flex; justify-content: center; align-items: center; margin: 0 0 22px; }
++.view-switch::before, .view-switch::after { content: ""; width: 72px; height: 1px; margin: 0 16px; background: linear-gradient(90deg, transparent, var(--gold)); }
++.view-switch::after { transform: scaleX(-1); }
++.view-switch button { font: inherit; font-size: 11px; letter-spacing: .24em; text-transform: uppercase; width: 132px; padding: 8px 0 8px .24em; color: var(--gold-deep); background: var(--card); border: 1px solid var(--gold-line); cursor: pointer; transition: background .12s, color .12s; }
++.view-switch button:first-of-type { border-radius: 999px 0 0 999px; border-right: 0; }
++.view-switch button:last-of-type { border-radius: 0 999px 999px 0; border-left: 0; }
++.view-switch button:hover { background: var(--accent-soft); color: var(--navy); }
++.view-switch button.on { background: var(--navy); color: #f3e6bd; }
++.view-switch button:focus-visible, .level:focus-visible, .option:focus-visible { outline: 3px solid rgba(176,138,46,.45); outline-offset: 2px; }
++@media (max-width: 420px) { .view-switch::before, .view-switch::after { display: none; } }
++
++/* ===== Practice / quiz ===== */
++.quiz { max-width: 760px; margin: 0 auto; scroll-margin-top: 12px; }
++.quiz .banner { margin: 0 0 12px; }
++.quiz-card { padding: 28px 36px 30px; }
++.quiz-intro { text-align: center; }
++.quiz-intro .title-ar { text-align: center; }
++.quiz-intro h2 { font-size: 28px; margin: 0; }
++.levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 22px; }
++.level { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 14px 18px; font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--gold-line); border-radius: 120px 120px 14px 14px; cursor: pointer; transition: background .15s, border-color .15s, box-shadow .15s, transform .15s; }
++.level:hover:not(:disabled) { border-color: var(--gold); background: #fbf6e7; box-shadow: 0 0 0 3px rgba(176,138,46,.18); transform: translateY(-2px); }
++.level:disabled { cursor: wait; opacity: .7; }
++.level-numeral { width: 46px; height: 46px; display: grid; place-items: center; border: 1px solid var(--gold); border-radius: 50%; font-family: var(--serif); font-size: 18px; font-weight: 600; color: var(--gold-deep); }
++.level-name { font-family: var(--serif); font-size: 22px; font-weight: 600; color: var(--navy); }
++.level-about { flex: 1; font-size: 13px; color: var(--muted); }
++.level-count { padding-top: 10px; width: 100%; border-top: 1px solid var(--border); font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-deep); }
++@media (max-width: 620px) { .levels { grid-template-columns: 1fr; } .level { border-radius: 14px; } .quiz-card { padding: 20px 18px; } }
++
++.quiz-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold-deep); }
++.quiz-top i { font-style: normal; color: var(--gold-line); margin: 0 4px; }
++.quiz-top button { justify-self: end; }
++.quiz-progress { height: 2px; margin: 12px 0 24px; background: var(--border); }
++.quiz-progress span { display: block; height: 100%; background: var(--gold); transition: width .3s; }
++.card h2.quiz-prompt { text-align: center; font-size: 24px; }
++.quiz-subject { text-align: center; margin: 4px 0 22px; }
++.quiz-word { font-family: var(--arabic); font-size: 46px; line-height: 2; color: var(--navy); }
++.quiz-word.spaced { color: var(--gold-deep); }
++.quiz-ref { font-size: 12px; color: var(--muted); }
++
++.options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
++.options.verses { grid-template-columns: 1fr; }
++@media (max-width: 620px) { .options { grid-template-columns: 1fr; } }
++.option { display: flex; align-items: center; gap: 14px; min-height: 58px; padding: 10px 16px 10px 12px; font: inherit; color: var(--ink); text-align: left; background: var(--card); border: 1px solid var(--gold-line); border-radius: 12px; cursor: pointer; transition: background .12s, border-color .12s, box-shadow .12s, opacity .12s; }
++.option:not([aria-disabled="true"]):hover { border-color: var(--gold); background: var(--accent-soft); box-shadow: 0 0 0 3px rgba(176,138,46,.18); }
++.option[aria-disabled="true"] { cursor: default; }
++.option-key { flex: none; width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--gold-line); border-radius: 50%; font-family: var(--serif); font-size: 15px; font-weight: 600; color: var(--gold-deep); }
++.option-text { flex: 1; min-width: 0; }
++.option-text.ar { font-family: var(--arabic); font-size: 24px; line-height: 1.9; text-align: center; }
++.options.verses .option-text.ar { font-size: 22px; line-height: 2.1; text-align: right; }
++.option-text small { display: block; font: 11px system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); text-align: right; }
++.option.correct { border-color: #4f7a5a; background: #edf3e8; box-shadow: inset 0 0 0 1px #4f7a5a; }
++.option.correct .option-key { background: #4f7a5a; border-color: #4f7a5a; color: #fff; }
++.option.wrong { border-color: #9a4a3a; background: #f8ebe5; box-shadow: inset 0 0 0 1px #9a4a3a; }
++.option.wrong .option-key { background: #9a4a3a; border-color: #9a4a3a; color: #fff; }
++.option.dim { opacity: .5; }
++
++.feedback { margin-top: 20px; padding: 14px 18px; background: #fbf7ec; border: 1px solid var(--gold-line); border-left: 3px solid #4f7a5a; border-radius: 10px; }
++.feedback.bad { border-left-color: #9a4a3a; }
++.feedback h3 { margin: 0 0 4px; color: #3d6347; } .feedback.bad h3 { color: #8a3f31; }
++.feedback p { margin: 4px 0; }
++.feedback-verse { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--border); }
++.verse { font-size: 24px; }
++.verse .marked { color: var(--gold-deep); background: var(--hit); border-radius: 8px; }
++.quiz-foot { display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
++.quiz-foot.centre { justify-content: center; }
++
++.quiz-result { text-align: center; }
++.card .quiz-result h3, .quiz-result > h3 { margin-top: 0; }
++.score { width: 140px; height: 140px; margin: 14px auto 22px; display: flex; flex-direction: column; justify-content: center; border: 1px solid var(--gold); border-radius: 50%; box-shadow: 0 0 0 6px var(--card), 0 0 0 7px var(--gold-line); }
++.score b { font-family: var(--serif); font-size: 54px; font-weight: 600; line-height: 1; color: var(--navy); }
++.score span { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-deep); }
++.breakdown { max-width: 420px; margin: 0 auto; }
++.breakdown > div { display: grid; grid-template-columns: 100px 1fr 44px; align-items: center; gap: 12px; padding: 5px 0; }
++.breakdown dt { text-align: left; font-size: 13px; }
++.breakdown dd { margin: 0; }
++.meter { height: 4px; background: var(--border); border-radius: 4px; overflow: hidden; }
++.meter span { display: block; height: 100%; background: var(--gold); }
++.tally { text-align: right; font-size: 13px; color: var(--muted); }
++.review { margin-top: 28px; text-align: left; }
++.review ul { list-style: none; margin: 0; padding: 0; }
++.review li { padding: 10px 0; border-top: 1px solid var(--border); }
++.review p { margin: 0 0 2px; }
++.review .notes-link { margin-right: 12px; }
+diff --git a/tests/test_quiz.py b/tests/test_quiz.py
+new file mode 100644
+index 0000000..9452795
+--- /dev/null
++++ b/tests/test_quiz.py
+@@ -0,0 +1,99 @@
++"""
++Quiz generator tests: every answer key is re-checked against the database, over many generated quizzes.
++    python -m unittest discover -s tests -v
++(Rebuild the DB first: python scripts/build_db.py)
++"""
++import sys
++import unittest
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
++from backend import queries, quiz  # noqa: E402
++
++WORDS = {w["word_id"]: w for a in queries.get_ayahs() for w in a["words"]}
++QUIZZES = [quiz.build_quiz(level, seed) for level in quiz.LEVELS for seed in range(200)]
++QUESTIONS = [q for z in QUIZZES for q in z["questions"]]
++
++
++def ayahs_of(root):
++    return {w["ayah"] for w in WORDS.values() if w["root"] == root}
++
++
++def is_true(q, option):
++    """Is this option factually correct according to the database?"""
++    if q["type"] == "contextual":
++        if option["text"] == quiz.BOTH:
++            return all(o["ayah"] in ayahs_of(q["root"]) for o in q["options"][:2])
++        return option["ayah"] in ayahs_of(q["root"])
++    w = WORDS[q["word"]["word_id"]]
++    if q["type"] == "root":
++        return option["text"].replace(" ", "") == w["root"]
++    if q["type"] == "vocabulary":
++        return option["text"] == w["gloss"]
++    codes = set(w["grammar"].split(","))
++    table = {"tense": quiz.TENSES, "case": quiz.CASES}.get(q["kind"])
++    if table:
++        return any(option["text"] == table[c] for c in codes & table.keys())
++    return any(option["text"].endswith(": " + quiz.PERSON[c][1]) for c in codes & quiz.PERSON.keys())
++
++
++class TestQuiz(unittest.TestCase):
++    def test_question_counts_per_level(self):
++        for z in QUIZZES:
++            got = {}
++            for q in z["questions"]:
++                got[q["type"]] = got.get(q["type"], 0) + 1
++            self.assertEqual(got, quiz.LEVELS[z["level"]], (z["level"], z["seed"]))
++        self.assertEqual({k: sum(v.values()) for k, v in quiz.LEVELS.items()},
++                         {"easy": 10, "intermediate": 15, "hard": 24})
++
++    def test_answer_key_matches_database(self):
++        for q in QUESTIONS:
++            keyed = next(o for o in q["options"] if o["id"] == q["answer"])
++            self.assertTrue(is_true(q, keyed), q)
++
++    def test_exactly_one_best_option(self):
++        for q in QUESTIONS:
++            true = [o["id"] for o in q["options"] if is_true(q, o)]
++            if q["type"] == "contextual" and q["answer"] == "D":
++                self.assertEqual(true, ["A", "B", "D"], q)     # the one complete answer is "Both A and B"
++            else:
++                self.assertEqual(true, [q["answer"]], q)
++
++    def test_options_are_distinct(self):
++        for q in QUESTIONS:
++            texts = [o["text"] for o in q["options"]]
++            self.assertEqual(len(texts), len(set(texts)), q)
++            self.assertIn(len(texts), (3, 4))
++
++    def test_no_wrong_meaning_comes_from_a_similar_root(self):
++        by_gloss = {}
++        for w in WORDS.values():
++            by_gloss.setdefault(w["gloss"], set()).add(w["root"])
++        for q in (q for q in QUESTIONS if q["type"] == "vocabulary"):
++            right = next(o["text"] for o in q["options"] if o["id"] == q["answer"])
++            for o in q["options"]:
++                if o["id"] != q["answer"]:
++                    self.assertFalse(quiz._stems(o["text"]) & quiz._stems(right), (right, o["text"]))
++                    self.assertTrue(any(r and not quiz._similar(r, q["root"]) for r in by_gloss[o["text"]]))
++
++    def test_one_question_per_root(self):
++        for z in QUIZZES:
++            roots = [q["root"] for q in z["questions"]]
++            self.assertEqual(len(roots), len(set(roots)), (z["level"], z["seed"]))
++
++    def test_hard_quiz_uses_both_a_and_b_sometimes(self):
++        for z in (z for z in QUIZZES if z["level"] == "hard"):
++            answers = [q["answer"] for q in z["questions"] if q["type"] == "contextual"]
++            self.assertEqual(answers.count("D"), 3)
++
++    def test_same_seed_same_quiz(self):
++        self.assertEqual(quiz.build_quiz("hard", 7), quiz.build_quiz("hard", 7))
++
++    def test_unknown_level(self):
++        with self.assertRaises(ValueError):
++            quiz.build_quiz("extreme")
++
++
++if __name__ == "__main__":
++    unittest.main()
