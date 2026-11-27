@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import TreeView from "./TreeView.jsx";
 import AyahLine from "./AyahLine.jsx";
 import RootLesson from "./RootLesson.jsx";
+import Dropdown from "./Dropdown.jsx";
 
 // Everything about ONE selected root: family tree, distribution across ayahs,
 // verse drill-down for the selected form, and roots that co-occur with it.
@@ -36,16 +37,19 @@ export default function RootPanel({ root, roots, ayahsByNum, clickedId, onSelect
 
   return (
     <section className="card">
-      <div className="card-head">
+      <div className="card-head root-head">
         <h2>Root explorer</h2>
-        <select value={root || ""} onChange={(e) => onSelectRoot(e.target.value || null)}>
-          <option value="">Choose a root...</option>
-          {roots.map((r) => (
-            <option key={r.root} value={r.root}>
-              {r.root} ({r.count})
-            </option>
-          ))}
-        </select>
+        <Dropdown
+          className="dd-root"
+          align="right"
+          ariaLabel="Choose a root"
+          value={root || ""}
+          options={[
+            { value: "", label: "Choose a root..." },
+            ...roots.map((r) => ({ value: r.root, label: `${r.root} (${r.count})` })),
+          ]}
+          onChange={(v) => onSelectRoot(v || null)}
+        />
       </div>
 
       {!root && <p className="hint">Hover any word in the surah, then click it (or pick a root above).</p>}

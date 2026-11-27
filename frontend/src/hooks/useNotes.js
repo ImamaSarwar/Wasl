@@ -32,7 +32,7 @@ export function useNotes() {
   const persist = (next) => {
     setSaved(next);
     const ok = saveNotes(getStorage(), next);
-    setSaveError(ok ? null : "Your browser would not store this note (storage is full or blocked). It will be lost when you close this page. Use Export notes to keep a copy.");
+    setSaveError(ok ? null : "Your browser would not store this note (storage is full or blocked). It will be lost when you close this page. Use 'Download my notes' to keep a copy.");
   };
 
   const get = useCallback((ayah) => saved[noteKey(ayah)] || null, [saved]);

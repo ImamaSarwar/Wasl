@@ -123,7 +123,7 @@ Open **`http://localhost:5173`** in your browser.
 * **Root Family Tree & Drill-Down:** Click a rooted word to inspect its family tree (root, lemma, morphological form, occurrence), verse chart, co-occurring roots, and highlighted ayahs[cite: 52].
 * **Recitation with Word Highlighting:** Pick a reciter from the top of the surah card to play an ayah or the whole surah with word highlighting (requires internet to stream audio)[cite: 52].
 * **Tafsir Panel:** Open English Tafsir Ibn Kathir commentary grouped by ayah ranges per ayah[cite: 52].
-* **Personal Notes:** Save per-ayah notes in browser `localStorage` (marked with a gold dot) and export them as a `.txt` file[cite: 52].
+* **Personal Notes:** Save per-ayah notes in browser `localStorage` (marked with a blue dot) and download them as a `.txt` file[cite: 52].
 * **Learning Assistant:** Ask grounded questions about roots, word forms, comparisons, or concepts in Surah Al-Mulk[cite: 52].
 
 ---

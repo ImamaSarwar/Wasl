@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MAX_NOTE_LENGTH } from "../notesStore.js";
 
 // The note for one ayah: a ruled-paper text area. Opens below the ayah (above the tafsir, if both are open).
-//   Save   -> stores the note and closes the panel (the ayah number then shows a gold dot)
+//   Save   -> stores the note and closes the panel (the ayah number then shows a blue dot)
 //   Close  -> hides the panel; anything typed is kept as a draft, so reopening restores it
 //   Delete -> asks first (inline, no browser pop-up), then removes the note
 // Ctrl/Cmd + Enter saves, Esc closes.
@@ -65,7 +65,7 @@ export default function NotesPanel({ ayahNum, saved, draft, storageOk, saveError
       {!storageOk && (
         <p className="notes-warning" role="alert">
           This browser is blocking storage (private mode?), so notes will be lost when you close the page.
-          Use Export notes to keep a copy.
+          Use "Download my notes" to keep a copy.
         </p>
       )}
       {saveError && <p className="notes-warning" role="alert">{saveError}</p>}
