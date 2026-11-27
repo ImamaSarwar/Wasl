@@ -30,6 +30,7 @@ export const api = {
   roots: () => request("GET", "/api/roots"),
   tree: (root) => request("GET", `/api/roots/${enc(root)}/tree`),
   formAyahs: (root, lemma) => request("GET", `/api/roots/${enc(root)}/forms/${enc(lemma)}/ayahs`),
+  lesson: (root) => request("GET", `/api/roots/${enc(root)}/lesson`),
   distribution: (root) => request("GET", `/api/roots/${enc(root)}/distribution`),
   cross: (root) => request("GET", `/api/cross${root ? `?root=${enc(root)}` : ""}`),
   reciters: () => request("GET", "/api/reciters"),

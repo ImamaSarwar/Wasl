@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import TreeView from "./TreeView.jsx";
 import AyahLine from "./AyahLine.jsx";
+import RootLesson from "./RootLesson.jsx";
 
 // Everything about ONE selected root: family tree, distribution across ayahs,
 // verse drill-down for the selected form, and roots that co-occur with it.
@@ -59,6 +60,8 @@ export default function RootPanel({ root, roots, ayahsByNum, clickedId, onSelect
           </p>
 
           <TreeView tree={tree} selectedLemma={lemma} onSelectForm={setLemma} />
+
+          <RootLesson key={tree.root} root={tree.root} ayahsByNum={ayahsByNum} onJumpToAyah={onJumpToAyah} />
 
           <h3>Where it occurs</h3>
           <div className="dist">
