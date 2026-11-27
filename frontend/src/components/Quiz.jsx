@@ -38,7 +38,7 @@ export default function Quiz({ ayahsByNum, onOpenAyah }) {
 
   // Bring the top of the card back into view when the screen changes.
   useEffect(() => {
-    if (top.current?.getBoundingClientRect().top < 0) top.current.scrollIntoView({ block: "start" });
+    if (top.current?.getBoundingClientRect().top < 60) top.current.scrollIntoView({ block: "start" });
   }, [index, quiz]);
 
   function choose(id) {

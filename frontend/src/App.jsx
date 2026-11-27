@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api.js";
 import { usePlayer } from "./hooks/usePlayer.js";
 import { useNotes } from "./hooks/useNotes.js";
@@ -22,6 +22,8 @@ export default function App() {
   const [error, setError] = useState(null);
   const [view, setView] = useState("read"); // "read" | "practice" | "dashboard"
   const pendingAyah = useRef(null); // ayah to scroll to once the reader is showing again
+  const scrollPlaces = useRef({}); // view -> where the page was scrolled to when it was last left
+  const topBar = useRef(null); // sits just above the sticky view switch
 
   // ---- recitation + tafsir ----
   const [reciters, setReciters] = useState([]);
@@ -94,7 +96,7 @@ export default function App() {
     });
   }, []);
 
-  // The gold dot on the ayah number opens the note (it never closes it).
+  // The blue dot on the ayah number opens the note (it never closes it).
   const openNotesFor = useCallback((n) => setOpenNotes((prev) => new Set(prev).add(n)), []);
 
   // Download every note as a text file: a safety copy, since notes live only in this browser.
@@ -136,8 +138,26 @@ export default function App() {
   const changeView = useCallback((next) => {
     if (next !== "read") player.stop();
     setHover(null);
+    if (next !== view) scrollPlaces.current[view] = window.scrollY;
     setView(next);
-  }, [player]);
+  }, [player, view]);
+
+    // Keep --bar-h equal to the real height of the sticky banner, so the root panel, quiz scroll offsets, etc. sit just below it.
+  useLayoutEffect(() => {
+    const el = topBar.current;
+    const update = () => document.documentElement.style.setProperty("--bar-h", `${el.offsetHeight}px`);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // The view switch stays on screen, so views can be changed from anywhere on the page. Return to where this
+  // view was left; a view opened for the first time starts at its top. Never jumps further down than that.
+  useLayoutEffect(() => {
+  const saved = scrollPlaces.current[view];
+  window.scrollTo(0, saved ?? 0);
+}, [view]);
 
   const openInReader = useCallback((n) => {
     pendingAyah.current = n;
@@ -159,12 +179,13 @@ export default function App() {
 
   return (
     <div className="app">
-      <header>
-        <h1>Wasl</h1>
-        <p className="tagline">Quran Root Explorer <span>·</span> Surah Al-Mulk</p>
-      </header>
-
-      <ViewSwitch view={view} onChange={changeView} />
+        <div className="top-bar" ref={topBar}>
+        <header>
+          <h1>Wasl</h1>
+          <p className="tagline">Quran Root Explorer <span>·</span> Surah Al-Mulk</p>
+        </header>
+        <ViewSwitch view={view} onChange={changeView} />
+      </div>
 
       {error && <p className="error banner">{error}</p>}
 
@@ -189,7 +210,7 @@ export default function App() {
               notes={notes}
               notesOpen={openNotes.has(a.ayah)}
               onToggleNotes={() => toggleNotes(a.ayah)}
-              onOpenNotes={() => openNotesFor(a.ayah)}
+              onOpenNotes={() => toggleNotes(a.ayah)}
             />
           ))}
         </section>
