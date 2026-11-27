@@ -36,5 +36,6 @@ export const api = {
   recitations: (reciterId) => request("GET", `/api/recitations/${enc(reciterId)}`),
   tafsirSources: () => request("GET", "/api/tafsir"),
   tafsir: (sourceId, ayah) => request("GET", `/api/tafsir/${enc(sourceId)}/${ayah}`),
+  quiz: (level) => request("GET", `/api/quiz?level=${enc(level)}`),
   ask: (question) => request("POST", "/api/ask", { question }),
 };
