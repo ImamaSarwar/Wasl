@@ -1,0 +1,462 @@
+diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
+index 17d306a..4bc663f 100644
+--- a/frontend/src/App.jsx
++++ b/frontend/src/App.jsx
+@@ -11,6 +11,7 @@ import AskBox from "./components/AskBox.jsx";
+ import DebugPanel from "./components/DebugPanel.jsx";
+ import ViewSwitch from "./components/ViewSwitch.jsx";
+ import Quiz from "./components/Quiz.jsx";
++import Dashboard from "./components/Dashboard.jsx";
+ 
+ export default function App() {
+   const [ayahs, setAyahs] = useState([]);
+@@ -19,7 +20,7 @@ export default function App() {
+   const [clickedId, setClickedId] = useState(null); // the exact word the user clicked (for a clear marker)
+   const [hover, setHover] = useState(null);
+   const [error, setError] = useState(null);
+-  const [view, setView] = useState("read"); // "read" | "practice"
++  const [view, setView] = useState("read"); // "read" | "practice" | "dashboard"
+   const pendingAyah = useRef(null); // ayah to scroll to once the reader is showing again
+ 
+   // ---- recitation + tafsir ----
+@@ -143,6 +144,12 @@ export default function App() {
+     changeView("read");
+   }, [changeView]);
+ 
++  // From the dashboard: show this root in the reader's root explorer, at one of its ayahs.
++  const openRootInReader = useCallback((root, n) => {
++    selectRoot(root);
++    openInReader(n);
++  }, [selectRoot, openInReader]);
++
+   useEffect(() => {
+     if (view === "read" && pendingAyah.current != null) {
+       jumpToAyah(pendingAyah.current);
+@@ -161,7 +168,7 @@ export default function App() {
+ 
+       {error && <p className="error banner">{error}</p>}
+ 
+-      {/* Both views stay mounted (only hidden), so a quiz in progress and your place in the reader are kept. */}
++      {/* Reader and quiz stay mounted (only hidden), so a quiz in progress and your place in the reader are kept. */}
+       <main hidden={view !== "read"}>
+         <section className="reader card">
+           <ReaderHeader reciters={reciters} reciterId={reciterId} onChangeReciter={changeReciter} player={player}
+@@ -206,6 +213,12 @@ export default function App() {
+         <Quiz ayahsByNum={ayahsByNum} onOpenAyah={openInReader} />
+       </div>
+ 
++      <div hidden={view !== "dashboard"}>
++        <Dashboard active={view === "dashboard"} ayahs={ayahs} totalRoots={roots.length}
++                   onPractise={() => changeView("practice")} onOpenRoot={openRootInReader}
++                   onOpenAyah={openInReader} />
++      </div>
++
+       <footer>
+         Data: Quranic Arabic Corpus (Kais Dukes, GPL), quran-morphology (mustafa0x), Tanzil.net (text unmodified).
+         Recitations and tafsir via Tarteel QUL; audio is streamed from the links in those files.
+diff --git a/frontend/src/components/Dashboard.jsx b/frontend/src/components/Dashboard.jsx
+new file mode 100644
+index 0000000..fe94294
+--- /dev/null
++++ b/frontend/src/components/Dashboard.jsx
+@@ -0,0 +1,160 @@
++import { useMemo, useState } from "react";
++import { getStorage } from "../notesStore.js";
++import { loadAttempts } from "../quizStore.js";
++import {
++  REVIEW_AFTER_DAYS, SKILLS, confusedPairs, revisionList, rootProgress, skillScores, weakestSkill,
++} from "../progress.js";
++
++// The learner's progress, worked out from the quiz answers saved in this browser.
++
++const GROUPS = [
++  { id: "learned", name: "Learned" },
++  { id: "learning", name: "Learning" },
++  { id: "revise", name: "To revise" },
++];
++const LEVEL_NAMES = { easy: "Easy", intermediate: "Intermediate", hard: "Hard" };
++const spaced = (root) => [...root].join(" ");
++
++export default function Dashboard({ active, ayahs, totalRoots, onPractise, onOpenRoot, onOpenAyah }) {
++  // Read the saved answers again each time the dashboard is opened.
++  const attempts = useMemo(() => (active ? loadAttempts(getStorage()) : []), [active]);
++  const words = useMemo(
++    () => Object.fromEntries(ayahs.flatMap((a) => a.words.map((w) => [w.word_id, { ...w, ayah: a.ayah }]))),
++    [ayahs]);
++  const [showRoots, setShowRoots] = useState(false);
++
++  if (!active) return null;
++
++  if (!attempts.length) {
++    return (
++      <div className="dash">
++        <section className="card quiz-card quiz-intro">
++          <span className="title-ar" lang="ar" dir="rtl">رحلتك</span>
++          <h2>Your journey begins here</h2>
++          <p className="hint">Take a quiz and your learned roots and revision topics will appear on this page.</p>
++          <button className="btn-royal" onClick={onPractise}>Take your first quiz</button>
++        </section>
++      </div>
++    );
++  }
++
++  const roots = rootProgress(attempts);
++  const count = (status) => roots.filter((r) => r.status === status).length;
++  const scores = skillScores(attempts);
++  const weak = weakestSkill(scores);
++  const revise = revisionList(roots);
++  const pairs = confusedPairs(attempts, 3);
++  const right = attempts.filter((a) => a.correct).length;
++  const firstAyah = (root) => ayahs.find((a) => a.words.some((w) => w.root === root))?.ayah;
++
++  return (
++    <div className="dash">
++      <section className="card quiz-card quiz-intro">
++        <span className="title-ar" lang="ar" dir="rtl">رحلتك</span>
++        <h2>Your journey</h2>
++        <div className="score"><b>{count("learned")}</b><span>of {totalRoots || "..."}</span></div>
++        <p className="dash-lead">roots learned</p>
++        <p className="hint">A root counts as learned after two correct answers in a row.</p>
++        <dl className="stats">
++          <div><dt>Still learning</dt><dd>{count("learning")}</dd></div>
++          <div><dt>Questions answered</dt><dd>{attempts.length}</dd></div>
++          <div><dt>Answered correctly</dt><dd>{Math.round((right / attempts.length) * 100)}%</dd></div>
++        </dl>
++      </section>
++
++      <section className="card quiz-card">
++        <h3>Revise next</h3>
++        {revise.length === 0 && !weak && <p className="hint">Nothing is waiting for revision. Well done.</p>}
++        {weak && (
++          <div className="focus">
++            <div>
++              <b>{weak.name}</b>
++              <span>{weak.right} of {weak.total} correct so far. The {LEVEL_NAMES[weak.level]} quiz covers this.</span>
++            </div>
++            <button className="btn-royal" onClick={onPractise}>Take a quiz</button>
++          </div>
++        )}
++        <ul className="rows">
++          {revise.map((r) => {
++            const word = words[r.wordId];
++            const ayah = word?.ayah ?? firstAyah(r.root);
++            return (
++              <li key={r.root}>
++                <span className="row-root" lang="ar" dir="rtl">{spaced(r.root)}</span>
++                <span className="row-text">
++                  {word && <><bdi className="row-word" lang="ar">{word.arabic}</bdi> {word.gloss}</>}
++                  <small>{r.reason === "stale" ? `Not practised for ${REVIEW_AFTER_DAYS} days or more` : "Missed last time"}</small>
++                </span>
++                {ayah && <button className="notes-link" onClick={() => onOpenRoot(r.root, ayah)}>Study</button>}
++              </li>
++            );
++          })}
++        </ul>
++      </section>
++
++      <section className="card quiz-card">
++        <h3>Your strengths</h3>
++        <dl className="breakdown">
++          {scores.map((s) => (
++            <div key={s.id}>
++              <dt>{s.name}</dt>
++              <dd className="meter"><span style={{ width: `${s.share * 100}%` }} /></dd>
++              <dd className="tally">{s.right}/{s.total}</dd>
++            </div>
++          ))}
++        </dl>
++      </section>
++
++      {pairs.length > 0 && (
++        <section className="card quiz-card">
++          <h3>Easily mixed up</h3>
++          <ul className="rows">
++            {pairs.map((p) => {
++              const word = words[p.wordId];
++              const arabic = p.skill === "root";
++              return (
++                <li key={p.key} className="pair">
++                  <div className="pair-head">
++                    <span>{SKILLS[p.skill]?.name}{word && <> · <bdi className="row-word" lang="ar">{word.arabic}</bdi></>}</span>
++                    {p.count > 1 && <span>{p.count} times</span>}
++                  </div>
++                  <div className="pair-body">
++                    <div><small>Correct</small><bdi className={arabic ? "ar" : undefined}>{p.first}</bdi></div>
++                    <div className="picked"><small>You chose</small><bdi className={arabic ? "ar" : undefined}>{p.second}</bdi></div>
++                  </div>
++                  {word && <button className="notes-link" onClick={() => onOpenAyah(word.ayah)}>See ayah {word.ayah}</button>}
++                </li>
++              );
++            })}
++          </ul>
++        </section>
++      )}
++
++      {roots.length > 0 && (
++        <section className="card quiz-card">
++          <div className="dash-head">
++            <h3>Your roots</h3>
++            <button className="notes-link" aria-expanded={showRoots} onClick={() => setShowRoots((v) => !v)}>
++              {showRoots ? "Hide" : `Show ${roots.length}`}
++            </button>
++          </div>
++          {showRoots && GROUPS.filter((g) => count(g.id) > 0).map((g) => (
++            <div className="root-group" key={g.id}>
++              <h4>{g.name} <span>{count(g.id)}</span></h4>
++              <div className="root-chips">
++                {roots.filter((r) => r.status === g.id).map((r) => (
++                  <button key={r.root} className={"root-chip " + g.id} lang="ar" dir="rtl"
++                          onClick={() => onOpenRoot(r.root, firstAyah(r.root))}>
++                    {spaced(r.root)}
++                  </button>
++                ))}
++              </div>
++            </div>
++          ))}
++        </section>
++      )}
++
++      <p className="dash-note">Your progress is saved only in this browser.</p>
++    </div>
++  );
++}
+diff --git a/frontend/src/components/ViewSwitch.jsx b/frontend/src/components/ViewSwitch.jsx
+index 45ce78e..d897dce 100644
+--- a/frontend/src/components/ViewSwitch.jsx
++++ b/frontend/src/components/ViewSwitch.jsx
+@@ -1,7 +1,8 @@
+-// The one piece of navigation: a quiet two-way switch under the title.
++// The one piece of navigation: a quiet three-way switch under the title.
+ const VIEWS = [
+   { id: "read", label: "Read" },
+   { id: "practice", label: "Practice" },
++  { id: "dashboard", label: "Dashboard" },
+ ];
+ 
+ export default function ViewSwitch({ view, onChange }) {
+diff --git a/frontend/src/progress.js b/frontend/src/progress.js
+new file mode 100644
+index 0000000..dfe804c
+--- /dev/null
++++ b/frontend/src/progress.js
+@@ -0,0 +1,89 @@
++// Turns saved quiz answers (see quizStore.js) into what the dashboard shows. Pure functions, no React,
++// no browser globals, so they can be unit-tested with `npm test`. Simple counting rules, no AI model.
++
++export const REVIEW_AFTER_DAYS = 7; // a learned root not practised for this long is suggested again
++export const WEAK_BELOW = 0.7;      // a skill under 70% correct is worth practising...
++export const MIN_ANSWERS = 3;       // ...once there are at least this many answers to judge by
++
++// Grammar questions test the form of a word, not knowledge of its root, so they don't change root status.
++const ROOT_TYPES = new Set(["vocabulary", "root", "contextual"]);
++
++export const SKILLS = {
++  vocabulary: { name: "Word meanings", level: "easy" },
++  root: { name: "Finding roots", level: "easy" },
++  tense: { name: "Verb tense", level: "intermediate" },
++  person: { name: "Verb person", level: "intermediate" },
++  case: { name: "Noun case", level: "intermediate" },
++  contextual: { name: "Roots in verses", level: "hard" },
++};
++
++const skillOf = (a) => (a.type === "morphology" ? a.kind : a.type);
++
++/**
++ * One entry per practised root. Status:
++ *   revise   - the latest answer was wrong
++ *   learned  - the latest two answers were both right
++ *   learning - right once so far
++ * `attempts` must be oldest first (the order they are saved in).
++ */
++export function rootProgress(attempts) {
++  const byRoot = new Map();
++  for (const a of attempts) {
++    if (!a.root || !ROOT_TYPES.has(a.type)) continue;
++    const r = byRoot.get(a.root) ?? { root: a.root, streak: 0, mistakes: 0, last: null, wordId: null };
++    r.streak = a.correct ? r.streak + 1 : 0;
++    if (!a.correct) r.mistakes += 1;
++    r.last = a.time;
++    r.wordId = a.wordId ?? r.wordId;
++    byRoot.set(a.root, r);
++  }
++  return [...byRoot.values()].map((r) => ({
++    ...r,
++    status: r.streak === 0 ? "revise" : r.streak >= 2 ? "learned" : "learning",
++  }));
++}
++
++/** Roots to look at next: wrong ones first (most mistakes, then longest ago), then learned ones gone stale. */
++export function revisionList(roots, now = new Date(), limit = 4) {
++  const oldest = (a, b) => String(a.last).localeCompare(String(b.last));
++  const wrong = roots.filter((r) => r.status === "revise")
++    .sort((a, b) => b.mistakes - a.mistakes || oldest(a, b))
++    .map((r) => ({ ...r, reason: "mistake" }));
++  const stale = roots.filter((r) => r.status !== "revise" &&
++      now - new Date(r.last) >= REVIEW_AFTER_DAYS * 86400000)
++    .sort(oldest)
++    .map((r) => ({ ...r, reason: "stale" }));
++  return [...wrong, ...stale].slice(0, limit);
++}
++
++/** Share of correct answers per skill, in a fixed order. Skills never practised are left out. */
++export function skillScores(attempts) {
++  return Object.entries(SKILLS).map(([id, s]) => {
++    const mine = attempts.filter((a) => skillOf(a) === id);
++    const right = mine.filter((a) => a.correct).length;
++    return { id, ...s, total: mine.length, right, share: mine.length ? right / mine.length : 0 };
++  }).filter((s) => s.total > 0);
++}
++
++/** The weakest skill that clearly needs work, or null. */
++export function weakestSkill(scores) {
++  return scores.filter((s) => s.total >= MIN_ANSWERS && s.share < WEAK_BELOW)
++    .sort((a, b) => a.share - b.share || b.total - a.total)[0] ?? null;
++}
++
++/**
++ * Pairs the learner mixes up: the right answer and the wrong one picked, in either direction.
++ * Most frequent first, then most recent. Verse questions are skipped (their options are ayahs, not forms).
++ */
++export function confusedPairs(attempts, limit = 4) {
++  const pairs = new Map();
++  attempts.forEach((a, order) => {
++    if (a.correct || a.type === "contextual" || !a.answer || !a.chosen) return;
++    const key = [skillOf(a), ...[a.answer, a.chosen].sort()].join("|");
++    const p = pairs.get(key) ?? { key, skill: skillOf(a), count: 0 };
++    Object.assign(p, { first: a.answer, second: a.chosen, wordId: a.wordId, order });
++    p.count += 1;
++    pairs.set(key, p);
++  });
++  return [...pairs.values()].sort((a, b) => b.count - a.count || b.order - a.order).slice(0, limit);
++}
+diff --git a/frontend/src/progress.test.js b/frontend/src/progress.test.js
+new file mode 100644
+index 0000000..2da52b4
+--- /dev/null
++++ b/frontend/src/progress.test.js
+@@ -0,0 +1,61 @@
++import test from "node:test";
++import assert from "node:assert/strict";
++import { confusedPairs, revisionList, rootProgress, skillScores, weakestSkill } from "./progress.js";
++
++const at = (day) => `2026-11-${String(day).padStart(2, "0")}T10:00:00.000Z`;
++const a = (root, correct, day = 20, extra = {}) =>
++  ({ type: "root", kind: null, root, correct, time: at(day), wordId: 1, answer: "x", chosen: correct ? "x" : "y", ...extra });
++const status = (list) => Object.fromEntries(rootProgress(list).map((r) => [r.root, r.status]));
++
++test("a root is learned after two right answers in a row", () => {
++  assert.deepEqual(status([a("خلق", true), a("ملك", true), a("ملك", true)]), { "خلق": "learning", "ملك": "learned" });
++});
++
++test("a wrong answer sends a learned root back to revision", () => {
++  const list = [a("خلق", true), a("خلق", true), a("خلق", false)];
++  assert.equal(status(list)["خلق"], "revise");
++  assert.equal(status([...list, a("خلق", true)])["خلق"], "learning");
++});
++
++test("grammar answers do not change root status", () => {
++  assert.deepEqual(status([a("خلق", false, 20, { type: "morphology", kind: "tense" })]), {});
++});
++
++test("revision: mistakes first, then stale roots; fresh correct ones are left out", () => {
++  const roots = rootProgress([
++    a("old", true, 1), a("fresh", true, 26), a("once", false, 25), a("twice", false, 2), a("twice", false, 26),
++  ]);
++  const list = revisionList(roots, new Date(at(27)));
++  assert.deepEqual(list.map((r) => [r.root, r.reason]),
++    [["twice", "mistake"], ["once", "mistake"], ["old", "stale"]]);
++  assert.equal(revisionList(roots, new Date(at(27)), 1).length, 1);
++});
++
++test("skill scores split grammar by kind and skip unpractised skills", () => {
++  const list = [a("r", true), a("r", false), a("r", true, 20, { type: "morphology", kind: "case" })];
++  assert.deepEqual(skillScores(list).map((s) => [s.id, s.right, s.total]), [["root", 1, 2], ["case", 1, 1]]);
++});
++
++test("weakest skill needs enough answers and a low score", () => {
++  assert.equal(weakestSkill(skillScores([a("r", false), a("r", false)])), null);
++  assert.equal(weakestSkill(skillScores([a("r", false), a("r", false), a("r", true)])).id, "root");
++  assert.equal(weakestSkill(skillScores([a("r", true), a("r", true), a("r", true)])), null);
++});
++
++test("confused pairs count both directions together and skip verse questions", () => {
++  const m = { type: "morphology", kind: "tense" };
++  const list = [
++    a("r", false, 20, { answer: "A", chosen: "B" }),
++    a("r", false, 21, { ...m, answer: "Past", chosen: "Present" }),
++    a("r", false, 22, { ...m, answer: "Present", chosen: "Past" }),
++    a("r", false, 23, { type: "contextual", answer: "67:1", chosen: "67:2" }),
++    a("r", true, 24),
++  ];
++  const pairs = confusedPairs(list);
++  assert.deepEqual(pairs.map((p) => [p.skill, p.count]), [["tense", 2], ["root", 1]]);
++  assert.equal(pairs[0].first, "Present"); // shows the latest direction
++});
++
++test("no answers gives empty results", () => {
++  assert.deepEqual([rootProgress([]), revisionList([]), skillScores([]), confusedPairs([])], [[], [], [], []]);
++});
+diff --git a/frontend/src/styles.css b/frontend/src/styles.css
+index aed4ec4..c1946db 100644
+--- a/frontend/src/styles.css
++++ b/frontend/src/styles.css
+@@ -230,7 +230,8 @@ select, input { font: inherit; padding: 6px 8px; border: 1px solid var(--border)
+ .view-switch button:hover { background: var(--accent-soft); color: var(--navy); }
+ .view-switch button.on { background: var(--navy); color: #f3e6bd; }
+ .view-switch button:focus-visible, .level:focus-visible, .option:focus-visible { outline: 3px solid rgba(176,138,46,.45); outline-offset: 2px; }
+-@media (max-width: 420px) { .view-switch::before, .view-switch::after { display: none; } }
++.view-switch button { white-space: nowrap; }
++@media (max-width: 560px) { .view-switch::before, .view-switch::after { display: none; } .view-switch button { flex: 1; width: auto; letter-spacing: .16em; padding-left: .16em; } }
+ 
+ /* ===== Practice / quiz ===== */
+ .quiz { max-width: 760px; margin: 0 auto; scroll-margin-top: 12px; }
+@@ -304,3 +305,49 @@ select, input { font: inherit; padding: 6px 8px; border: 1px solid var(--border)
+ .review li { padding: 10px 0; border-top: 1px solid var(--border); }
+ .review p { margin: 0 0 2px; }
+ .review .notes-link { margin-right: 12px; }
++
++/* ===== Dashboard (reuses the quiz card, score ring and meters) ===== */
++.dash { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
++.dash .card { margin: 0; }
++.card .dash h3, .dash .card h3 { margin-top: 0; }
++.dash .score { margin-bottom: 14px; }
++.dash-lead { margin: 0; font-family: var(--serif); font-size: 22px; font-weight: 600; color: var(--navy); }
++.dash .hint { margin: 4px 0 14px; }
++.stats { display: grid; grid-template-columns: repeat(3, 1fr); margin: 12px 0 0; padding-top: 16px; border-top: 1px solid var(--border); }
++.stats > div { display: flex; flex-direction: column-reverse; justify-content: flex-end; padding: 0 8px; }
++.stats > div + div { border-left: 1px solid var(--border); }
++.stats dd { margin: 0; font-family: var(--serif); font-size: 30px; font-weight: 600; color: var(--navy); }
++.stats dt { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold-deep); }
++.dash .breakdown { max-width: 520px; }
++.dash .breakdown > div { grid-template-columns: 130px 1fr 52px; }
++
++.focus { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; padding: 14px 18px; background: #fbf7ec; border: 1px solid var(--gold-line); border-radius: 12px; }
++.focus b { display: block; font-family: var(--serif); font-size: 20px; color: var(--navy); }
++.focus span { font-size: 13px; color: var(--muted); }
++.rows { list-style: none; margin: 0; padding: 0; }
++.rows li + li { border-top: 1px solid var(--border); }
++.rows li { display: flex; align-items: center; gap: 18px; padding: 12px 0; }
++.row-root { flex: none; width: 104px; text-align: center; font-family: var(--arabic); font-size: 26px; color: var(--gold-deep); }
++.row-text { flex: 1; min-width: 0; }
++.row-text small { display: block; font-size: 12px; color: var(--muted); }
++.row-word { font-family: var(--arabic); font-size: 19px; text-transform: none; letter-spacing: 0; }
++
++.rows li.pair { display: block; }
++.pair-head { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold-deep); }
++.pair-body { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0 4px; }
++.pair-body > div { padding: 8px 14px; background: #edf3e8; border-radius: 10px; }
++.pair-body > div.picked { background: #f8ebe5; }
++.pair-body small { display: block; font-size: 11px; color: var(--muted); }
++.pair-body .ar { font-family: var(--arabic); font-size: 24px; }
++
++.dash-head { display: flex; justify-content: space-between; align-items: center; }
++.dash-head h3 { margin: 0; }
++.root-group h4 { margin: 18px 0 8px; font-size: 13px; font-weight: 600; color: var(--navy); }
++.root-group h4 span { color: var(--muted); font-weight: 400; margin-left: 4px; }
++.root-chips { display: flex; flex-wrap: wrap; gap: 8px; }
++.root-chip { font-family: var(--arabic); font-size: 20px; padding: 2px 16px; color: var(--ink); background: var(--card); border: 1px solid var(--gold-line); border-radius: 999px; cursor: pointer; }
++.root-chip.learned { background: #edf3e8; border-color: #4f7a5a; }
++.root-chip.revise { background: #f8ebe5; border-color: #9a4a3a; }
++.root-chip:hover { box-shadow: 0 0 0 3px rgba(176,138,46,.25); }
++.dash-note { margin: 0; text-align: center; font-size: 12px; color: var(--muted); }
++@media (max-width: 620px) { .stats dt { letter-spacing: .08em; } .rows li { gap: 10px; } .row-root { width: 76px; font-size: 22px; } .dash .breakdown > div { grid-template-columns: 110px 1fr 44px; } .pair-body { grid-template-columns: 1fr; } }

@@ -11,6 +11,7 @@ import AskBox from "./components/AskBox.jsx";
 import DebugPanel from "./components/DebugPanel.jsx";
 import ViewSwitch from "./components/ViewSwitch.jsx";
 import Quiz from "./components/Quiz.jsx";
+import Dashboard from "./components/Dashboard.jsx";
 
 export default function App() {
   const [ayahs, setAyahs] = useState([]);
@@ -19,7 +20,7 @@ export default function App() {
   const [clickedId, setClickedId] = useState(null); // the exact word the user clicked (for a clear marker)
   const [hover, setHover] = useState(null);
   const [error, setError] = useState(null);
-  const [view, setView] = useState("read"); // "read" | "practice"
+  const [view, setView] = useState("read"); // "read" | "practice" | "dashboard"
   const pendingAyah = useRef(null); // ayah to scroll to once the reader is showing again
 
   // ---- recitation + tafsir ----
@@ -143,6 +144,12 @@ export default function App() {
     changeView("read");
   }, [changeView]);
 
+  // From the dashboard: show this root in the reader's root explorer, at one of its ayahs.
+  const openRootInReader = useCallback((root, n) => {
+    selectRoot(root);
+    openInReader(n);
+  }, [selectRoot, openInReader]);
+
   useEffect(() => {
     if (view === "read" && pendingAyah.current != null) {
       jumpToAyah(pendingAyah.current);
@@ -161,7 +168,7 @@ export default function App() {
 
       {error && <p className="error banner">{error}</p>}
 
-      {/* Both views stay mounted (only hidden), so a quiz in progress and your place in the reader are kept. */}
+      {/* Reader and quiz stay mounted (only hidden), so a quiz in progress and your place in the reader are kept. */}
       <main hidden={view !== "read"}>
         <section className="reader card">
           <ReaderHeader reciters={reciters} reciterId={reciterId} onChangeReciter={changeReciter} player={player}
@@ -204,6 +211,12 @@ export default function App() {
 
       <div hidden={view !== "practice"}>
         <Quiz ayahsByNum={ayahsByNum} onOpenAyah={openInReader} />
+      </div>
+
+      <div hidden={view !== "dashboard"}>
+        <Dashboard active={view === "dashboard"} ayahs={ayahs} totalRoots={roots.length}
+                   onPractise={() => changeView("practice")} onOpenRoot={openRootInReader}
+                   onOpenAyah={openInReader} />
       </div>
 
       <footer>

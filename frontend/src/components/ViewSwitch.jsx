@@ -1,7 +1,8 @@
-// The one piece of navigation: a quiet two-way switch under the title.
+// The one piece of navigation: a quiet three-way switch under the title.
 const VIEWS = [
   { id: "read", label: "Read" },
   { id: "practice", label: "Practice" },
+  { id: "dashboard", label: "Dashboard" },
 ];
 
 export default function ViewSwitch({ view, onChange }) {
