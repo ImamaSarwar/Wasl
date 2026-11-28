@@ -1,0 +1,49 @@
+diff --git a/scripts/debug_question.py b/scripts/debug_question.py
+index 7d4ef8e..23a6108 100644
+--- a/scripts/debug_question.py
++++ b/scripts/debug_question.py
+@@ -3,11 +3,15 @@ Show everything the assistant does with ONE question: how it was routed, the exa
+ LLM, the model's raw reply, what the verifier said, and the final answer.
+ 
+     python scripts/debug_question.py "Which ayah says no army can help the disbelievers besides God?"
+-    python scripts/debug_question.py "What does Jahar mean?" --retriever minilm
++    python scripts/debug_question.py m25            # an id from eval/questions.jsonl or eval/generated.jsonl
++    python scripts/debug_question.py "What does Jahar mean?" --retriever tfidf
++
++The retriever defaults to minilm (the one Wasl runs with); pass --retriever tfidf to compare.
+ 
+ Uses the reply cache, so asking about a question you already evaluated costs no quota.
+ """
+ import argparse
++import json
+ import sys
+ from pathlib import Path
+ 
+@@ -15,11 +19,25 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+ from rag import generate, llm, pipeline, retrieve, verify  # noqa: E402
+ 
+ 
++def _by_id(text):
++    """'m25' -> the question text from the eval sets; anything else is returned unchanged."""
++    root = Path(__file__).resolve().parent.parent / "eval"
++    for name in ("questions.jsonl", "generated.jsonl"):
++        for line in (root / name).read_text(encoding="utf-8").splitlines():
++            if line.strip():
++                d = json.loads(line)
++                if d["id"] == text:
++                    return d["question"]
++    return text
++
++
+ def main():
+     ap = argparse.ArgumentParser()
+-    ap.add_argument("question")
+-    ap.add_argument("--retriever", default=None)
++    ap.add_argument("question", help="the question text, or an eval id such as m25")
++    ap.add_argument("--retriever", default="minilm")
+     a = ap.parse_args()
++    a.question = _by_id(a.question.strip())
++    print(f"question:  {a.question}")
+     ret = retrieve.get_retriever(a.retriever)
+     cfg = llm.get_config()
+ 

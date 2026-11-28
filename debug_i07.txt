@@ -1,0 +1,97 @@
+﻿question:  Which verse talks about being given hearing, sight, and hearts so people can be thankful?
+python : 
+At line:5 char:1
++ python scripts/debug_question.py i07 2>&1 | Out-File -Encoding 
+utf8 d ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteE 
+   xception
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|ΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûê| 103/103 
+[00:00<00:00, 2618.82it/s]
+Warning: You are sending unauthenticated requests to the HF Hub. 
+Please set a HF_TOKEN to enable higher rate limits and faster 
+downloads.
+retriever: minilm (answer above 0.38, ask the LLM from 0.28)
+route:     intent=concept  roots=['╪│┘à╪╣', '╪▒╪ú┘è', '╪¿╪╡╪▒', '┘é┘ä╪¿', '╪╡╪»╪▒', '╪┤┘â╪▒']  matched=[{'root': '╪│┘à╪╣', 'via': 'concept', 'matched': 'hearing'}, {'root': '╪▒╪ú┘è', 'via': 'concept', 'matched': 'sight'}, {'root': '╪¿╪╡╪▒', 'via': 'concept', 'matched': 'sight'}, {'root': '┘é┘ä╪¿', 'via': 'concept', 'matched': 'hearts'}, {'root': '╪╡╪»╪▒', 'via': 'concept', 'matched': 'hearts'}, {'root': '╪┤┘â╪▒', 'via': 'concept', 'matched': 'thankful'}]
+
+--- evidence prompt sent to the LLM ----------------------------------------
+QUESTION: Which verse talks about being given hearing, sight, and hearts so people can be thankful?
+QUESTION TYPE: concept
+MATCHED: "hearing" -> root ╪│┘à╪╣ (sm╩┐) (topic word); "sight" -> root ╪▒╪ú┘è (r╩╛y) (topic word); "sight" -> root ╪¿╪╡╪▒ (bsr) (topic word); "hearts" -> root ┘é┘ä╪¿ (qlb) (topic word); "hearts" -> root ╪╡╪»╪▒ (sdr) (topic word); "thankful" -> root ╪┤┘â╪▒ (shkr) (topic word)
+
+EVIDENCE (the only facts you may use):
+ROOT ╪│┘à╪╣ (sm╩┐): 3 occurrence(s) in the surah, 2 form(s)
+  FORM ╪│┘Ä┘à┘É╪╣┘Ä | count 2 | meanings: "they will hear"; "listened" | ayahs: 7, 10
+  FORM ╪│┘Ä┘à┘Æ╪╣ | count 1 | meanings: "the hearing" | ayahs: 23
+ROOT ╪▒╪ú┘è (r╩╛y): 6 occurrence(s) in the surah, 1 form(s)
+  FORM ╪▒┘Ä╪ú┘Ä┘ë | count 6 | meanings: "you see"; "they see"; "they (will) see it"; "Have you seen" | ayahs: 3, 19, 27, 28, 30
+ROOT ╪¿╪╡╪▒ (bsr): 5 occurrence(s) in the surah, 2 form(s)
+  FORM ╪¿┘Ä╪╡┘Ä╪▒ | count 4 | meanings: "the vision"; "and the vision" | ayahs: 3, 4, 23
+  FORM ╪¿┘Ä╪╡┘É┘è╪▒ | count 1 | meanings: "All-Seer" | ayahs: 19
+ROOT ┘é┘ä╪¿ (qlb): 1 occurrence(s) in the surah, 1 form(s)
+  FORM ╪º┘å┘é┘Ä┘ä┘Ä╪¿┘Ä | count 1 | meanings: "Will return" | ayahs: 4
+ROOT ╪╡╪»╪▒ (sdr): 1 occurrence(s) in the surah, 1 form(s)
+  FORM ╪╡┘Ä╪»┘Æ╪▒ | count 1 | meanings: "the breasts" | ayahs: 13
+ROOT ╪┤┘â╪▒ (shkr): 1 occurrence(s) in the surah, 1 form(s)
+  FORM ╪┤┘Ä┘â┘Ä╪▒┘Ä | count 1 | meanings: "you give thanks" | ayahs: 23
+AYAHS:
+[67:3] translation: [And] who created seven heavens in layers. You do not see in the creation of the Most Merciful any inconsistency. So return [your] vision [to the sky]; do you see any breaks?
+    word ╪¬┘Ä╪▒┘Ä┘ë┘░ | root ╪▒╪ú┘è | lemma ╪▒┘Ä╪ú┘Ä┘ë | meaning "you see"
+    word ╪¬┘Ä╪▒┘Ä┘ë┘░ | root ╪▒╪ú┘è | lemma ╪▒┘Ä╪ú┘Ä┘ë | meaning "you see"
+    word ╪º┘ä┘Æ╪¿┘Ä╪╡┘Ä╪▒┘Ä | root ╪¿╪╡╪▒ | lemma ╪¿┘Ä╪╡┘Ä╪▒ | meaning "the vision"
+[67:4] translation: Then return [your] vision twice again. [Your] vision will return to you humbled while it is fatigued.
+    word ╪º┘ä┘Æ╪¿┘Ä╪╡┘Ä╪▒┘Ä | root ╪¿╪╡╪▒ | lemma ╪¿┘Ä╪╡┘Ä╪▒ | meaning "the vision"
+    word ╪º┘ä┘Æ╪¿┘Ä╪╡┘Ä╪▒┘Å | root ╪¿╪╡╪▒ | lemma ╪¿┘Ä╪╡┘Ä╪▒ | meaning "the vision"
+    word ┘è┘Ä┘å┘é┘Ä┘ä┘É╪¿┘Æ | root ┘é┘ä╪¿ | lemma ╪º┘å┘é┘Ä┘ä┘Ä╪¿┘Ä | meaning "Will return"
+[67:7] translation: When they are thrown into it, they hear from it a [dreadful] inhaling while it boils up.
+    word ╪│┘Ä┘à┘É╪╣┘Å┘ê╪º | root ╪│┘à╪╣ | lemma ╪│┘Ä┘à┘É╪╣┘Ä | meaning "they will hear"
+[67:10] translation: And they will say, "If only we had been listening or reasoning, we would not be among the companions of the Blaze."
+    word ┘å┘Ä╪│┘Æ┘à┘Ä╪╣┘Å | root ╪│┘à╪╣ | lemma ╪│┘Ä┘à┘É╪╣┘Ä | meaning "listened"
+[67:13] translation: And conceal your speech or publicize it; indeed, He is Knowing of that within the breasts.
+    word ╪º┘ä╪╡┘æ┘Å╪»┘Å┘ê╪▒┘É | root ╪╡╪»╪▒ | lemma ╪╡┘Ä╪»┘Æ╪▒ | meaning "the breasts"
+[67:19] translation: Do they not see the birds above them with wings outspread and [sometimes] folded in? None holds them [aloft] except the Most Merciful. Indeed He is, of all things, Seeing.
+    word ┘è┘Ä╪▒┘Ä┘ê┘Æ╪º | root ╪▒╪ú┘è | lemma ╪▒┘Ä╪ú┘Ä┘ë | meaning "they see"
+    word ╪¿┘Ä╪╡┘É┘è╪▒┘î | root ╪¿╪╡╪▒ | lemma ╪¿┘Ä╪╡┘É┘è╪▒ | meaning "All-Seer"
+[67:23] translation: Say, "It is He who has produced you and made for you hearing and vision and hearts; little are you grateful."
+    word ╪º┘ä╪│┘æ┘Ä┘à┘Æ╪╣┘Ä | root ╪│┘à╪╣ | lemma ╪│┘Ä┘à┘Æ╪╣ | meaning "the hearing"
+    word ┘ê┘Ä╪º┘ä┘Æ╪ú┘Ä╪¿┘Æ╪╡┘Ä╪º╪▒┘Ä | root ╪¿╪╡╪▒ | lemma ╪¿┘Ä╪╡┘Ä╪▒ | meaning "and the vision"
+    word ╪¬┘Ä╪┤┘Æ┘â┘Å╪▒┘Å┘ê┘å┘Ä | root ╪┤┘â╪▒ | lemma ╪┤┘Ä┘â┘Ä╪▒┘Ä | meaning "you give thanks"
+[67:27] translation: But when they see it approaching, the faces of those who disbelieve will be distressed, and it will be said, "This is that for which you used to call."
+    word ╪▒┘Ä╪ú┘Ä┘ê┘Æ┘ç┘Å | root ╪▒╪ú┘è | lemma ╪▒┘Ä╪ú┘Ä┘ë | meaning "they (will) see it"
+[67:28] translation: Say, [O Muhammad], "Have you considered: whether Allah should cause my death and those with me or have mercy upon us, who can protect the disbelievers from a painful punishment?"
+    word ╪ú┘Ä╪▒┘Ä╪ú┘Ä┘è┘Æ╪¬┘Å┘à┘Æ | root ╪▒╪ú┘è | lemma ╪▒┘Ä╪ú┘Ä┘ë | meaning "Have you seen"
+[67:30] translation: Say, "Have you considered: if your water was to become sunken [into the earth], then who could bring you flowing water?"
+    word ╪ú┘Ä╪▒┘Ä╪ú┘Ä┘è┘Æ╪¬┘Å┘à┘Æ | root ╪▒╪ú┘è | lemma ╪▒┘Ä╪ú┘Ä┘ë | meaning "Have you seen"
+ALSO CLOSE IN MEANING TO THE QUESTION (found by search; some may be unrelated):
+[67:15] translation: It is He who made the earth tame for you - so walk among its slopes and eat of His provision - and to Him is the resurrection.
+[67:12] translation: Indeed, those who fear their Lord unseen will have forgiveness and great reward.
+
+--- raw model reply --------------------------------------------------------
+{"refuse": false, "answer": "Ayah [67:23] states, \"Say, 'It is He who has produced you and made for you hearing and vision and hearts; little are you grateful.'\" In this verse, Allah mentions making \"the hearing\", \"and the vision\", and hearts, noting how little \"you give thanks\".", "claims": [{"ayah": 23, "root": "╪│┘à╪╣", "lemma": "╪│┘Ä┘à┘Æ╪╣", "gloss": "the hearing"}, {"ayah": 23, "root": "╪¿╪╡╪▒", "lemma": "╪¿┘Ä╪╡┘Ä╪▒", "gloss": "and the vision"}, {"ayah": 23, "root": "╪┤┘â╪▒", "lemma": "╪┤┘Ä┘â┘Ä╪▒┘Ä", "gloss": "you give thanks"}]}
+
+--- verifier ---------------------------------------------------------------
+- the quoted text "Say, 'It is He who has produced you and made for you hearing and vision and hearts; little are you grateful.'" is not a meaning or translation in the evidence
+
+--- final answer (generated_by=template, refused=False) ----------
+The root ╪│┘à╪╣ (sm╩┐) occurs 3 times in Surah Al-Mulk, in 2 word forms: ╪│┘Ä┘à┘É╪╣┘Ä "they will hear", "listened" (2 times, ayahs 7, 10); ╪│┘Ä┘à┘Æ╪╣ "the hearing" (once, ayah 23).
+
+The root ╪▒╪ú┘è (r╩╛y) occurs 6 times in Surah Al-Mulk, in 1 word form: ╪▒┘Ä╪ú┘Ä┘ë "you see", "they see", "they (will) see it" (6 times, ayahs 3, 19, 27, 28, 30).
+
+The root ╪¿╪╡╪▒ (bsr) occurs 5 times in Surah Al-Mulk, in 2 word forms: ╪¿┘Ä╪╡┘Ä╪▒ "the vision", "and the vision" (4 times, ayahs 3, 4, 23); ╪¿┘Ä╪╡┘É┘è╪▒ "All-Seer" (once, ayah 19).
+
+The root ┘é┘ä╪¿ (qlb) occurs once in Surah Al-Mulk, in 1 word form: ╪º┘å┘é┘Ä┘ä┘Ä╪¿┘Ä "Will return" (once, ayah 4).
+
+The root ╪╡╪»╪▒ (sdr) occurs once in Surah Al-Mulk, in 1 word form: ╪╡┘Ä╪»┘Æ╪▒ "the breasts" (once, ayah 13).
+
+The root ╪┤┘â╪▒ (shkr) occurs once in Surah Al-Mulk, in 1 word form: ╪┤┘Ä┘â┘Ä╪▒┘Ä "you give thanks" (once, ayah 23).
+
+[67:3] [And] who created seven heavens in layers. You do not see in the creation of the Most Merciful any inconsistency. So return [your] vision [to the sky]; do you see any breaks?
+[67:4] Then return [your] vision twice again. [Your] vision will return to you humbled while it is fatigued.
+[67:7] When they are thrown into it, they hear from it a [dreadful] inhaling while it boils up.
+[67:10] And they will say, "If only we had been listening or reasoning, we would not be among the companions of the Blaze."
+[67:13] And conceal your speech or publicize it; indeed, He is Knowing of that within the breasts.
+[67:19] Do they not see the birds above them with wings outspread and [sometimes] folded in? None holds them [aloft] except the Most Merciful. Indeed He is, of all things, Seeing.
+... and 4 more ayahs (see the root panel).

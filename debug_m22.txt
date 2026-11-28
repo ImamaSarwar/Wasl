@@ -1,0 +1,38 @@
+﻿question:  What does the surah say about the faculties humans were given?
+python : 
+At line:4 char:1
++ python scripts/debug_question.py m22 2>&1 | Out-File -Encoding 
+utf8 d ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteE 
+   xception
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|ΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûê| 103/103 
+[00:00<00:00, 1640.30it/s]
+Warning: You are sending unauthenticated requests to the HF Hub. 
+Please set a HF_TOKEN to enable higher rate limits and faster 
+downloads.
+retriever: minilm (answer above 0.38, ask the LLM from 0.28)
+route:     intent=semantic  roots=[]  matched=[]
+candidates: 15 (0.385), 24 (0.335), 2 (0.324)
+
+--- evidence prompt sent to the LLM ----------------------------------------
+QUESTION: What does the surah say about the faculties humans were given?
+QUESTION TYPE: semantic
+
+EVIDENCE (the only facts you may use):
+AYAHS (closest in meaning to the question; no root was named):
+[67:15] translation: It is He who made the earth tame for you - so walk among its slopes and eat of His provision - and to Him is the resurrection.
+[67:24] translation: Say, "It is He who has multiplied you throughout the earth, and to Him you will be gathered."
+[67:2] translation: [He] who created death and life to test you [as to] which of you is best in deed - and He is the Exalted in Might, the Forgiving -
+
+--- raw model reply --------------------------------------------------------
+{"refuse": true, "answer": "", "claims": [], "reason": "The provided evidence does not contain information about the faculties given to humans."}
+
+--- verifier ---------------------------------------------------------------
+passed
+
+--- final answer (generated_by=llm, refused=True) ----------
+I can't answer that from the evidence I retrieved for Surah Al-Mulk. Try naming a root or word form, or ask about a topic in the surah.

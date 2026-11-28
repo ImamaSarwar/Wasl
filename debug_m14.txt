@@ -1,0 +1,38 @@
+﻿question:  How does the surah describe the sound of Hell?
+python : 
+At line:3 char:1
++ python scripts/debug_question.py m14 2>&1 | Out-File -Encoding 
+utf8 d ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteE 
+   xception
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|ΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûê| 103/103 
+[00:00<00:00, 2158.52it/s]
+Warning: You are sending unauthenticated requests to the HF Hub. 
+Please set a HF_TOKEN to enable higher rate limits and faster 
+downloads.
+retriever: minilm (answer above 0.38, ask the LLM from 0.28)
+route:     intent=semantic  roots=[]  matched=[]
+candidates: 6 (0.399), 15 (0.358), 5 (0.304)
+
+--- evidence prompt sent to the LLM ----------------------------------------
+QUESTION: How does the surah describe the sound of Hell?
+QUESTION TYPE: semantic
+
+EVIDENCE (the only facts you may use):
+AYAHS (closest in meaning to the question; no root was named):
+[67:6] translation: And for those who disbelieved in their Lord is the punishment of Hell, and wretched is the destination.
+[67:15] translation: It is He who made the earth tame for you - so walk among its slopes and eat of His provision - and to Him is the resurrection.
+[67:5] translation: And We have certainly beautified the nearest heaven with stars and have made [from] them what is thrown at the devils and have prepared for them the punishment of the Blaze.
+
+--- raw model reply --------------------------------------------------------
+{"refuse": true, "answer": "", "claims": [], "reason": "The provided evidence does not contain information describing the sound of Hell."}
+
+--- verifier ---------------------------------------------------------------
+passed
+
+--- final answer (generated_by=llm, refused=True) ----------
+I can't answer that from the evidence I retrieved for Surah Al-Mulk. Try naming a root or word form, or ask about a topic in the surah.

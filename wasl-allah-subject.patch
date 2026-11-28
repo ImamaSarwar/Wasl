@@ -1,0 +1,50 @@
+diff --git a/rag/resolve.py b/rag/resolve.py
+index e5a9c8c..00f333f 100644
+--- a/rag/resolve.py
++++ b/rag/resolve.py
+@@ -244,6 +244,12 @@ def resolve(question):
+                 add(root, "lemma", w, m.start())
+ 
+     direct = [it for _, it in sorted(found.values(), key=lambda x: x[0])]
++    # "Allah" is usually the subject of a question ("which verses mention Allah showing mercy"), not the word
++    # being asked about. If a concept word is also present and the question is not about the word itself
++    # (root / word / form / meaning / how often), do not let the name hijack the root route.
++    if len(direct) == 1 and direct[0]["via"] == "lemma" and direct[0]["matched"].lower() == "allah" \
++            and not _WORD_FOCUS.search(question) and any(rx.search(question) for rx, _, _ in _CONCEPTS):
++        direct = []
+     direct_roots = {it["root"] for it in direct}
+ 
+     concept_found = {}
+@@ -257,5 +263,9 @@ def resolve(question):
+     return {"direct": direct, "concept": concept}
+ 
+ 
++# The question is about the word itself, not about its topic.
++_WORD_FOCUS = re.compile(r"\b(?:roots?|words?|lemmas?|forms?|spell(?:ed|ing)?|mean(?:s|ing)?|"
++                         r"appear(?:s|ed)?|occur(?:s|red)?|times|how (?:many|often)|count|derive[sd]?)\b", re.I)
++
+ # Plain English words that happen to equal a root's Latin spelling (extend if one shows up).
+ _COMMON_WORDS = set()
+diff --git a/tests/test_gates.py b/tests/test_gates.py
+index 96ea974..63cd2f5 100644
+--- a/tests/test_gates.py
++++ b/tests/test_gates.py
+@@ -68,3 +68,18 @@ def test_look_like_is_not_the_concept_of_seeing():
+ 
+ def test_look_at_still_means_seeing():
+     assert "رأي" in [it["root"] for it in resolve("Where does the surah tell people to look at the sky?")["concept"]]
++
++
++def test_allah_as_subject_does_not_hijack_the_root_route():
++    # i10: "Allah" is who the question is about, not the word being asked about
++    r = resolve("Which verses mention Allah showing mercy or granting relief?")
++    assert r["direct"] == [] and "رحم" in [it["root"] for it in r["concept"]]
++
++
++@pytest.mark.parametrize("q", [
++    "What is the root of Allah?",
++    "Where does the word Allah appear?",
++    "How many times does Allah appear in the surah?",
++])
++def test_allah_as_the_word_asked_about_still_resolves(q):
++    assert [it["root"] for it in resolve(q)["direct"]] == ["أله"]

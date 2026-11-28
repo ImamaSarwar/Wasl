@@ -68,3 +68,18 @@ def test_look_like_is_not_the_concept_of_seeing():
 
 def test_look_at_still_means_seeing():
     assert "رأي" in [it["root"] for it in resolve("Where does the surah tell people to look at the sky?")["concept"]]
+
+
+def test_allah_as_subject_does_not_hijack_the_root_route():
+    # i10: "Allah" is who the question is about, not the word being asked about
+    r = resolve("Which verses mention Allah showing mercy or granting relief?")
+    assert r["direct"] == [] and "رحم" in [it["root"] for it in r["concept"]]
+
+
+@pytest.mark.parametrize("q", [
+    "What is the root of Allah?",
+    "Where does the word Allah appear?",
+    "How many times does Allah appear in the surah?",
+])
+def test_allah_as_the_word_asked_about_still_resolves(q):
+    assert [it["root"] for it in resolve(q)["direct"]] == ["أله"]

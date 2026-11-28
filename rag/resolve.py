@@ -244,6 +244,12 @@ def resolve(question):
                 add(root, "lemma", w, m.start())
 
     direct = [it for _, it in sorted(found.values(), key=lambda x: x[0])]
+    # "Allah" is usually the subject of a question ("which verses mention Allah showing mercy"), not the word
+    # being asked about. If a concept word is also present and the question is not about the word itself
+    # (root / word / form / meaning / how often), do not let the name hijack the root route.
+    if len(direct) == 1 and direct[0]["via"] == "lemma" and direct[0]["matched"].lower() == "allah" \
+            and not _WORD_FOCUS.search(question) and any(rx.search(question) for rx, _, _ in _CONCEPTS):
+        direct = []
     direct_roots = {it["root"] for it in direct}
 
     concept_found = {}
@@ -256,6 +262,10 @@ def resolve(question):
     concept = [it for _, it in sorted(concept_found.values(), key=lambda x: x[0])]
     return {"direct": direct, "concept": concept}
 
+
+# The question is about the word itself, not about its topic.
+_WORD_FOCUS = re.compile(r"\b(?:roots?|words?|lemmas?|forms?|spell(?:ed|ing)?|mean(?:s|ing)?|"
+                         r"appear(?:s|ed)?|occur(?:s|red)?|times|how (?:many|often)|count|derive[sd]?)\b", re.I)
 
 # Plain English words that happen to equal a root's Latin spelling (extend if one shows up).
 _COMMON_WORDS = set()
