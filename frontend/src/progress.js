@@ -87,3 +87,16 @@ export function confusedPairs(attempts, limit = 4) {
   });
   return [...pairs.values()].sort((a, b) => b.count - a.count || b.order - a.order).slice(0, limit);
 }
+
+export const FOCUS_ROOTS = 8; // most roots sent to the quiz as "revise these"
+
+/**
+ * What the next quiz should practise (adaptive question selection, rule-based):
+ * the roots on the dashboard's "Revise next" list (mistakes first, then stale) and the weakest skill.
+ * The backend mixes these in (see backend/quiz.py); an empty result gives an ordinary quiz.
+ */
+export function quizFocus(attempts, now = new Date()) {
+  const roots = revisionList(rootProgress(attempts), now, FOCUS_ROOTS).map((r) => r.root);
+  const weak = weakestSkill(skillScores(attempts))?.id ?? null;
+  return { roots, weak };
+}

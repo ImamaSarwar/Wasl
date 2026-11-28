@@ -22,6 +22,14 @@
 | `eval/questions.jsonl` | 130 hand questions (dev/test) |
 | `eval/generated.jsonl` | 125 generated questions, split `gen` |
 | `tests/` | `test_llm.py`, `test_baselines.py`, `test_gates.py`, `test_metrics.py`, `test_threezone.py` |
+| `backend/quiz.py` | adaptive selection: `build_quiz(level, seed, focus, weak)`, rules 1–3 in the module docstring |
+| `rag/quiz_feedback.py` | Gemini feedback on wrong quiz answers: re-grade, two-sided evidence, per-side verifier, retry, template |
+| `backend/main.py` | `/api/quiz` takes `focus` and `weak`; new `POST /api/quiz/feedback` |
+| `eval/run_quiz_feedback.py` | `--make`, `--faulty`, Gemini run with blind rating sheet, `--ratings` |
+| `eval/quiz_feedback_cases.jsonl` | fixed test set: 60 wrong answers (15 vocabulary, 15 root, 15 grammar, 15 contextual) |
+| `frontend/src/progress.js` | `quizFocus(attempts)`: revision roots + weakest skill sent with the quiz request |
+| `frontend/src/components/Quiz.jsx` | adaptive note on the level picker, "Revision" tag, feedback on wrong answers |
+| `tests/` | `test_quiz_adaptive.py`, `test_quiz_feedback.py` |
 
 144 tests pass on the user's machine after the final patch.
 

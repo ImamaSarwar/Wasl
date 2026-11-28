@@ -125,6 +125,10 @@ Open **`http://localhost:5173`** in your browser.
 * **Tafsir Panel:** Open English Tafsir Ibn Kathir commentary grouped by ayah ranges per ayah[cite: 52].
 * **Personal Notes:** Save per-ayah notes in browser `localStorage` (marked with a blue dot) and download them as a `.txt` file[cite: 52].
 * **Learning Assistant:** Ask grounded questions about roots, word forms, comparisons, or concepts in Surah Al-Mulk[cite: 52].
+* **Practice Quiz:** Easy / Intermediate / Hard multiple-choice quizzes (meanings, roots, grammar, verses in context). Every question and answer key comes from the database (`backend/quiz.py`).
+* **Adaptive Question Selection (rule-based personalisation):** the next quiz mixes in the roots on the dashboard's "Revise next" list (up to half of each question type), gives the weakest skill one extra question, and asks a weak grammar skill in every other grammar question. Revision questions are tagged in the quiz. No model is involved.
+* **AI Feedback on Wrong Answers (Gemini):** after a wrong answer, `POST /api/quiz/feedback` grades it again from the database, fetches evidence for the chosen option and for the right answer, and asks Gemini to explain the difference. `rag/quiz_feedback.py` checks each sentence against its own evidence (grammar terms, ayah references, quotations, Arabic words, numbers, interpretation); one retry, then the database template is shown. Unverified text is never shown.
+* **Learning Dashboard:** learned roots, skill scores, easily confused pairs and revision suggestions, worked out from quiz answers saved in the browser.
 
 ---
 
@@ -134,6 +138,14 @@ Run backend unit tests from the repository root (with `.venv` active):
 
 ```bash
 python -m unittest discover -s tests -v
+```
+
+Evaluate the quiz feedback (fixed set of 60 wrong answers in `eval/quiz_feedback_cases.jsonl`):
+
+```bash
+python -m eval.run_quiz_feedback --faulty     # verifier catch rate on deliberately broken explanations (offline)
+python -m eval.run_quiz_feedback              # Gemini run (needs .env); writes eval/results/ and a blind rating sheet
+python -m eval.run_quiz_feedback --ratings eval/results/quiz_feedback_rating.csv   # after a teammate rates it
 ```
 
 Run frontend storage tests:

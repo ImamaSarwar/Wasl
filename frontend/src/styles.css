@@ -404,3 +404,7 @@ select, input { font: inherit; padding: 6px 8px; border: 1px solid var(--border)
 .lesson .lesson-lemma { margin: 0 0 6px; font-size: 12px; color: var(--muted); }
 .lesson-lemma span { font-family: var(--arabic); font-size: 18px; color: var(--navy); }
 .lesson .lesson-note { margin: 6px 0; padding: 4px 10px; font-size: 12px; background: var(--card); border: 1px dashed var(--gold); border-radius: 8px; }
+
+/* Quiz: adaptive selection note, revision tag, AI feedback */
+.quiz-adapt { margin: 10px auto 0; max-width: 46ch; padding: 8px 14px; font-size: 13px; color: var(--navy); background: #fbf7ec; border: 1px solid var(--gold-line); border-radius: 10px; }
+.quiz-tag { padding: 1px 8px; border: 1px solid var(--gold); border-radius: 999px; font-size: 10px; letter-spacing: .14em; color: var(--gold-deep); background: #fbf7ec; }

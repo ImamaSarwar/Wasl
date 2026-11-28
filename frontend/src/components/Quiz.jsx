@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { getStorage } from "../notesStore.js";
-import { makeAttempt, saveAttempt } from "../quizStore.js";
+import { SKILLS, quizFocus } from "../progress.js";
+import { loadAttempts, makeAttempt, saveAttempt } from "../quizStore.js";
 
 // The practice area: choose a level -> answer one question at a time -> see the result.
-// Questions and answer keys come from the database (GET /api/quiz); no language model is involved.
+// Questions and answer keys come from the database (GET /api/quiz). Adaptive selection (rule-based): the
+// roots the dashboard says to revise and the weakest skill are sent along, and the backend mixes them in.
+// After a wrong answer, POST /api/quiz/feedback asks Gemini to explain the difference from database
+// evidence; the text is checked before it is shown, otherwise the database explanation stays.
 
 const LEVELS = [
   { id: "easy", numeral: "I", name: "Easy", count: 10, about: "Word meanings and roots" },
@@ -21,11 +25,15 @@ export default function Quiz({ ayahsByNum, onOpenAyah }) {
   const [error, setError] = useState(null);
   const top = useRef(null);
 
+  // What the next quiz should practise, from the answers saved in this browser. Worked out again
+  // whenever the level picker is shown (after a quiz new answers have been saved).
+  const focus = useMemo(() => (quiz ? null : quizFocus(loadAttempts(getStorage()))), [quiz]);
+
   async function start(level) {
     setLoading(level);
     setError(null);
     try {
-      const next = await api.quiz(level);
+      const next = await api.quiz(level, quizFocus(loadAttempts(getStorage())));
       setQuiz(next);
       setIndex(0);
       setAnswers([]);
@@ -49,7 +57,7 @@ export default function Quiz({ ayahsByNum, onOpenAyah }) {
 
   let screen;
   if (!quiz) {
-    screen = <LevelPicker onStart={start} loading={loading} />;
+    screen = <LevelPicker onStart={start} loading={loading} focus={focus} />;
   } else if (index >= quiz.questions.length) {
     screen = <Result quiz={quiz} answers={answers} loading={loading} onRetry={() => start(quiz.level)}
                      onChangeLevel={() => setQuiz(null)} onOpenAyah={onOpenAyah} />;
@@ -67,12 +75,22 @@ export default function Quiz({ ayahsByNum, onOpenAyah }) {
   );
 }
 
-function LevelPicker({ onStart, loading }) {
+function LevelPicker({ onStart, loading, focus }) {
+  const n = focus?.roots.length ?? 0;
+  const weak = focus?.weak ? SKILLS[focus.weak]?.name : null;
   return (
     <section className="card quiz-card quiz-intro">
       <span className="title-ar" lang="ar" dir="rtl">اختبر نفسك</span>
       <h2>Test your understanding</h2>
       <p className="hint">Multiple-choice questions drawn from Surah Al-Mulk. Choose a level to begin.</p>
+      {(n > 0 || weak) && (
+        <p className="quiz-adapt">
+          Your next quiz mixes in
+          {n > 0 && <> {n} root{n === 1 ? "" : "s"} from your revision list</>}
+          {n > 0 && weak && " and"}
+          {weak && <> extra practice in <b>{weak}</b></>}.
+        </p>
+      )}
       <div className="levels">
         {LEVELS.map((l) => (
           <button key={l.id} className="level" onClick={() => onStart(l.id)} disabled={!!loading}>
@@ -111,6 +129,20 @@ function Question({ quiz, index, chosen, ayahsByNum, onChoose, onNext, onQuit, o
   const next = useRef(null);
   useEffect(() => { if (done) next.current?.focus({ preventScroll: true }); }, [done]);
 
+  // Wrong answer: ask for an explanation of the difference. Until it arrives (or if it fails) the
+  // database explanation is shown. This component is remounted for each question, so it resets.
+  const [why, setWhy] = useState(null); // null | "loading" | feedback object | "failed"
+  useEffect(() => {
+    if (!done || right) return;
+    let live = true;
+    setWhy("loading");
+    api.quizFeedback(q, chosen)
+      .then((res) => live && setWhy(res?.correct === false ? res : "failed"))
+      .catch(() => live && setWhy("failed"));
+    return () => { live = false; };
+  }, [done, right]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fb = why && typeof why === "object" ? why : null;
+
   // "Both A and B" is right: A and B are then correct too, so show them that way.
   const bothRight = q.type === "contextual" && q.answer === "D";
   const stateOf = (id) => {
@@ -122,7 +154,10 @@ function Question({ quiz, index, chosen, ayahsByNum, onChoose, onNext, onQuit, o
   return (
     <section className="card quiz-card">
       <div className="quiz-top">
-        <span>{level.name} <i>·</i> {TYPE_NAMES[q.type]}</span>
+        <span>
+          {level.name} <i>·</i> {TYPE_NAMES[q.type]}
+          {q.revision && <> <i>·</i> <span className="quiz-tag" title="You are revising this root">Revision</span></>}
+        </span>
         <span>{index + 1} of {total}</span>
         <button className="notes-link" onClick={onQuit}>Leave quiz</button>
       </div>
@@ -161,7 +196,18 @@ function Question({ quiz, index, chosen, ayahsByNum, onChoose, onNext, onQuit, o
       {done && (
         <div className={"feedback" + (right ? " good" : " bad")} role="status">
           <h3>{right ? "Correct" : "Not quite"}</h3>
-          <p dir="ltr">{q.explanation}</p>
+          {fb ? (
+            <>
+              <p dir="ltr"><b>Your answer:</b> {fb.why_not}</p>
+              <p dir="ltr"><b>The right answer:</b> {fb.why_correct}</p>
+              {fb.generated_by === "llm" && (
+                <p className="lesson-source">Written by AI from the database and checked automatically.</p>
+              )}
+            </>
+          ) : (
+            <p dir="ltr">{q.explanation}</p>
+          )}
+          {why === "loading" && <p className="hint">Preparing an explanation of your answer...</p>}
           {q.refs.map((n) => (
             <div className="feedback-verse" key={n}>
               <Verse ayah={ayahsByNum[n]} wordId={q.word?.word_id} root={q.word ? null : q.root} />
