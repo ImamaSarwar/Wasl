@@ -9,9 +9,7 @@ Wasl ("connection") is a web app that teaches the vocabulary of **Surah Al-Mulk*
 | **Live app** | _to be added after deployment_ |
 | **API docs** | `/docs` on the backend (Swagger UI), `/openapi.json` |
 | **Repository** | https://github.com/ImamaSarwar/Wasl |
-| **Course** | AI-4009 Generative AI, FAST-NUCES Islamabad, Pure Product track |
 | **Team** | Huzaifa Muhammad (23i-0608), Imama Sarwar (23i-3048) |
-| **Supervisor** | Dr. Akhtar Jamil |
 
 ---
 
