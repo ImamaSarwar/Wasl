@@ -30,6 +30,10 @@ THRESHOLDS_LOW = {
     "minilm": 0.28,   # dev sweep: below this almost nothing answerable survives, so refusing outright is safe
 }
 TOP_K = 3
+# When an LLM reads the candidates it may see more of them: it can discard an unrelated ayah, while a right
+# ayah at rank 4 or 5 never reaches it if only 3 are sent (dev set: hit@3 40/45, hit@5 43/45).
+# Ayahs still have to clear the low threshold above, and the verifier still checks every citation.
+TOP_K_LLM = 5
 
 
 def _ayah_texts():

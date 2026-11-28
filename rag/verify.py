@@ -40,6 +40,30 @@ def _norm(s):
     return re.sub(r"\s+", " ", re.sub(r"[.,;:!?]+$", "", s.strip().lower()))
 
 
+_QCH = "\"'\u2018\u2019\u201c\u201d\\"
+
+
+def _qnorm(s):
+    """_norm that also ignores quote marks (and JSON backslashes): a translation that itself contains
+    "quotes" is often re-quoted by the model with single quotes."""
+    return _norm(re.sub("[" + re.escape(_QCH) + "]", "", s or ""))
+
+
+def _drop_evidence_quotes(answer, texts):
+    """
+    Blank out every full evidence translation in the answer (with whatever quote marks surround it), so
+    that nested quotes inside a translation cannot pair up wrongly with the quotes around it.
+    Short glosses are left alone: only full translations (25+ characters) are removed.
+    """
+    q = "[" + re.escape(_QCH) + "]*"
+    for t in texts:
+        if len(t) < 25:
+            continue
+        pat = q.join(re.escape(part) for part in re.split("[" + re.escape(_QCH) + "]+", t.strip()) if part)
+        answer = re.sub(q + pat + q, " ", answer, flags=re.I)
+    return answer
+
+
 def _gloss_norm(s):
     """Compare glosses ignoring case, wrapping quotes and the dataset's (the) parentheses."""
     s = re.sub(r'["\u201c\u201d()]', "", s or "")
@@ -246,10 +270,10 @@ def check(raw, intent, evidence, question=None, extra=None):
         if gloss and not any(_gloss_norm(gloss) == _gloss_norm(h.get("gloss") or "") for h in hits):
             errors.append(f'claim {i}: no word of root {root} in ayah {n} has the meaning "{gloss}"')
 
-    texts = _norm(" | ".join(idx["texts"]))
-    asked = _norm(question or "")
-    for m in QUOTED.finditer(answer):
-        phrase = _norm(m.group(1) or m.group(2))
+    texts = _qnorm(" | ".join(idx["texts"]))
+    asked = _qnorm(question or "")
+    for m in QUOTED.finditer(_drop_evidence_quotes(answer, idx["texts"])):
+        phrase = _qnorm(m.group(1) or m.group(2))
         # allowed: a meaning/translation, an Arabic word or lemma from the evidence, or the learner's own words
         if phrase and phrase not in texts and not (asked and phrase in asked) \
                 and strip_arabic(phrase) not in idx["arabic"]:

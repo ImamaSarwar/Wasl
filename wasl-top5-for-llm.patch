@@ -1,0 +1,50 @@
+diff --git a/rag/pipeline.py b/rag/pipeline.py
+index 22e95a5..c61469a 100644
+--- a/rag/pipeline.py
++++ b/rag/pipeline.py
+@@ -156,7 +156,7 @@ def _semantic(q, retriever=None, threshold=None, use_llm=False):
+     ret = retriever or retrieve.get_retriever()
+     high = retrieve.threshold(ret.name) if threshold is None else threshold
+     low = high if (threshold is not None or not use_llm) else retrieve.threshold_low(ret.name)
+-    scored = ret.search(q, retrieve.TOP_K)
++    scored = ret.search(q, retrieve.TOP_K_LLM if use_llm else retrieve.TOP_K)
+     hits = [(n, sc) for n, sc in scored if sc >= low]
+     if not hits:
+         return _refuse(REFUSAL_NOT_FOUND, "no_match")
+diff --git a/rag/retrieve.py b/rag/retrieve.py
+index 7733aea..885221d 100644
+--- a/rag/retrieve.py
++++ b/rag/retrieve.py
+@@ -30,6 +30,10 @@ THRESHOLDS_LOW = {
+     "minilm": 0.28,   # dev sweep: below this almost nothing answerable survives, so refusing outright is safe
+ }
+ TOP_K = 3
++# When an LLM reads the candidates it may see more of them: it can discard an unrelated ayah, while a right
++# ayah at rank 4 or 5 never reaches it if only 3 are sent (dev set: hit@3 40/45, hit@5 43/45).
++# Ayahs still have to clear the low threshold above, and the verifier still checks every citation.
++TOP_K_LLM = 5
+ 
+ 
+ def _ayah_texts():
+diff --git a/tests/test_threezone.py b/tests/test_threezone.py
+index c19850c..259206a 100644
+--- a/tests/test_threezone.py
++++ b/tests/test_threezone.py
+@@ -104,3 +104,17 @@ def test_an_llm_refusal_records_which_ayahs_the_model_was_shown(monkeypatch, tmp
+     r = pipeline.answer("poem", retriever=Stub([(5, BORDER), (6, BORDER - 0.01)]), use_llm=True, llm_config=CFG,
+                         llm_transport=_reply(refuse=True, answer="", claims=[], reason="unrelated"))
+     assert r["refused"] and r["retrieved"] == [5, 6]
++
++
++def test_the_llm_is_shown_five_candidates_and_the_database_answer_three():
++    scored = [(n, HIGH + 0.1 - n * 0.01) for n in (7, 8, 9, 10, 11, 12)]
++    no_llm = pipeline._semantic("q", Stub(scored), None, use_llm=False)
++    with_llm = pipeline._semantic("q", Stub(scored), None, use_llm=True)
++    assert [a["ayah"] for a in no_llm["evidence"]] == [7, 8, 9]
++    assert [a["ayah"] for a in with_llm["evidence"]] == [7, 8, 9, 10, 11]
++
++
++def test_candidates_below_the_low_threshold_are_still_dropped_when_five_are_requested():
++    scored = [(7, HIGH + 0.05), (8, HIGH), (9, HIGH - 0.01), (10, LOW + 0.01), (11, LOW - 0.05)]
++    r = pipeline._semantic("q", Stub(scored), None, use_llm=True)
++    assert [a["ayah"] for a in r["evidence"]] == [7, 8, 9, 10]

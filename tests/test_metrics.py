@@ -49,6 +49,17 @@ def test_classify_failure_causes():
     assert c(_q("concept", roots_include=["رحم"]), {"refused": False, "cited": [3, 19, 5]}, [3, 19]) is None
 
 
+def test_an_llm_refusal_is_a_retrieval_miss_when_the_right_ayah_was_never_shown():
+    c = metrics.classify_failure
+    q = _q("semantic", relevant=[7, 8])
+    miss = c(q, {"refused": True, "generated_by": "llm", "retrieved": [6, 15, 5]}, [7, 8])
+    assert "retrieval missed" in miss
+    # the right ayah was shown and the model still refused: a real over-refusal
+    assert "LLM refused" in c(q, {"refused": True, "generated_by": "llm", "retrieved": [6, 7]}, [7, 8])
+    # records written before this field existed keep the old label
+    assert "LLM refused" in c(q, {"refused": True, "generated_by": "llm"}, [7, 8])
+
+
 def test_group_failures_orders_by_size():
     g = metrics.group_failures([("a", 1, "x"), ("b", 2, "y"), ("b", 3, "z")])
     assert list(g) == ["b", "a"] and g["b"] == [(2, "y"), (3, "z")]

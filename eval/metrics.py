@@ -56,6 +56,9 @@ def classify_failure(q, rec, truth=None):
         return f"should refuse but answered (through the {rec.get('intent') or 'unknown'} path)"
     if rec["refused"]:
         if rec.get("generated_by") == "llm":
+            shown = rec.get("retrieved")
+            if t == "semantic" and truth is not None and shown is not None and not (set(shown) & set(truth)):
+                return "retrieval missed the right ayah, so the LLM's refusal was correct"
             return "the LLM refused although evidence was retrieved"
         if t == "semantic":
             return "refused before the LLM: best similarity below the threshold (or an unrelated route)"

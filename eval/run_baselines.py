@@ -105,7 +105,7 @@ def _pipeline(use_llm):
         return {"refused": r["refused"], "cited": set(r["citations"]), "text": r["answer"], "error": err,
                 "generated_by": r.get("generated_by"), "reason": r.get("llm_reason"),
                 "verification_errors": r.get("verification_errors"), "intent": r.get("intent"),
-                "roots": r.get("roots"), "usage": r.get("llm_stats")}
+                "roots": r.get("roots"), "usage": r.get("llm_stats"), "retrieved": r.get("retrieved")}
     return run
 
 
@@ -297,6 +297,7 @@ def main():
                                              "error": out.get("error"), "reason": out.get("reason"),
                                              "verification_errors": out.get("verification_errors"),
                                              "intent": out.get("intent"), "roots": out.get("roots"),
+                                             "retrieved": out.get("retrieved"),
                                              "latency_s": round(latency, 3),
                                              "llm_calls": usage.get("calls", 0),
                                              "measured": not usage.get("unmeasured", 0),

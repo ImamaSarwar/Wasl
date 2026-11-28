@@ -97,3 +97,24 @@ def test_a_root_question_does_not_get_search_ayahs(monkeypatch, tmp_path):
     pipeline.answer("What does the root khalaq mean?", retriever=Stub([(3, 0.5)]), use_llm=True,
                     llm_config=CFG, llm_transport=cap)
     assert "ALSO CLOSE IN MEANING TO THE QUESTION" not in cap.bodies[0]
+
+
+def test_an_llm_refusal_records_which_ayahs_the_model_was_shown(monkeypatch, tmp_path):
+    _no_cache(monkeypatch, tmp_path)
+    r = pipeline.answer("poem", retriever=Stub([(5, BORDER), (6, BORDER - 0.01)]), use_llm=True, llm_config=CFG,
+                        llm_transport=_reply(refuse=True, answer="", claims=[], reason="unrelated"))
+    assert r["refused"] and r["retrieved"] == [5, 6]
+
+
+def test_the_llm_is_shown_five_candidates_and_the_database_answer_three():
+    scored = [(n, HIGH + 0.1 - n * 0.01) for n in (7, 8, 9, 10, 11, 12)]
+    no_llm = pipeline._semantic("q", Stub(scored), None, use_llm=False)
+    with_llm = pipeline._semantic("q", Stub(scored), None, use_llm=True)
+    assert [a["ayah"] for a in no_llm["evidence"]] == [7, 8, 9]
+    assert [a["ayah"] for a in with_llm["evidence"]] == [7, 8, 9, 10, 11]
+
+
+def test_candidates_below_the_low_threshold_are_still_dropped_when_five_are_requested():
+    scored = [(7, HIGH + 0.05), (8, HIGH), (9, HIGH - 0.01), (10, LOW + 0.01), (11, LOW - 0.05)]
+    r = pipeline._semantic("q", Stub(scored), None, use_llm=True)
+    assert [a["ayah"] for a in r["evidence"]] == [7, 8, 9, 10]

@@ -136,6 +136,17 @@ def _refuse(message, intent, roots=()):
             "intent": intent, "roots": list(roots), "evidence": None}
 
 
+def _shown_ayahs(res):
+    """Ayah numbers the LLM was shown (root evidence, candidate ayahs and the 'also close' extras)."""
+    nums = set()
+    for e in (res.get("evidence") or []) + (res.get("extra") or []):
+        if "ayahs" in e:                      # root evidence: a list of its ayahs
+            nums.update(a["ayah"] for a in e["ayahs"])
+        else:                                 # a candidate ayah
+            nums.add(e["ayah"])
+    return sorted(nums)
+
+
 def _semantic(q, retriever=None, threshold=None, use_llm=False):
     """
     No root named: find ayahs by meaning. Refuse if even the best match is too weak.
@@ -145,7 +156,7 @@ def _semantic(q, retriever=None, threshold=None, use_llm=False):
     ret = retriever or retrieve.get_retriever()
     high = retrieve.threshold(ret.name) if threshold is None else threshold
     low = high if (threshold is not None or not use_llm) else retrieve.threshold_low(ret.name)
-    scored = ret.search(q, retrieve.TOP_K)
+    scored = ret.search(q, retrieve.TOP_K_LLM if use_llm else retrieve.TOP_K)
     hits = [(n, sc) for n, sc in scored if sc >= low]
     if not hits:
         return _refuse(REFUSAL_NOT_FOUND, "no_match")
@@ -208,7 +219,7 @@ def _with_llm(res, question, use_llm, config=None, transport=None):
     if data["refuse"]:
         return {**_refuse(REFUSAL_UNSUPPORTED, res["intent"], res.get("roots", ())),
                 "generated_by": "llm", "attempts": attempt, "llm_reason": data.get("reason"),
-                "llm_stats": stats}
+                "llm_stats": stats, "retrieved": _shown_ayahs(res)}
     return {**res, "answer": data["answer"].strip() + "\n\nEvidence:\n" + template,
             "citations": verify.cited_ayahs(data), "generated_by": "llm", "attempts": attempt,
             "claims": data.get("claims") or [], "llm_stats": stats}

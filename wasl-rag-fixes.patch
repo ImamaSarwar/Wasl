@@ -1,0 +1,325 @@
+diff --git a/eval/metrics.py b/eval/metrics.py
+index f3e34bf..d7947a4 100644
+--- a/eval/metrics.py
++++ b/eval/metrics.py
+@@ -56,6 +56,9 @@ def classify_failure(q, rec, truth=None):
+         return f"should refuse but answered (through the {rec.get('intent') or 'unknown'} path)"
+     if rec["refused"]:
+         if rec.get("generated_by") == "llm":
++            shown = rec.get("retrieved")
++            if t == "semantic" and truth is not None and shown is not None and not (set(shown) & set(truth)):
++                return "retrieval missed the right ayah, so the LLM's refusal was correct"
+             return "the LLM refused although evidence was retrieved"
+         if t == "semantic":
+             return "refused before the LLM: best similarity below the threshold (or an unrelated route)"
+diff --git a/eval/run_baselines.py b/eval/run_baselines.py
+index ff3b2be..d19b7fb 100644
+--- a/eval/run_baselines.py
++++ b/eval/run_baselines.py
+@@ -105,7 +105,7 @@ def _pipeline(use_llm):
+         return {"refused": r["refused"], "cited": set(r["citations"]), "text": r["answer"], "error": err,
+                 "generated_by": r.get("generated_by"), "reason": r.get("llm_reason"),
+                 "verification_errors": r.get("verification_errors"), "intent": r.get("intent"),
+-                "roots": r.get("roots"), "usage": r.get("llm_stats")}
++                "roots": r.get("roots"), "usage": r.get("llm_stats"), "retrieved": r.get("retrieved")}
+     return run
+ 
+ 
+@@ -297,6 +297,7 @@ def main():
+                                              "error": out.get("error"), "reason": out.get("reason"),
+                                              "verification_errors": out.get("verification_errors"),
+                                              "intent": out.get("intent"), "roots": out.get("roots"),
++                                             "retrieved": out.get("retrieved"),
+                                              "latency_s": round(latency, 3),
+                                              "llm_calls": usage.get("calls", 0),
+                                              "measured": not usage.get("unmeasured", 0),
+diff --git a/rag/pipeline.py b/rag/pipeline.py
+index 672ffad..22e95a5 100644
+--- a/rag/pipeline.py
++++ b/rag/pipeline.py
+@@ -136,6 +136,17 @@ def _refuse(message, intent, roots=()):
+             "intent": intent, "roots": list(roots), "evidence": None}
+ 
+ 
++def _shown_ayahs(res):
++    """Ayah numbers the LLM was shown (root evidence, candidate ayahs and the 'also close' extras)."""
++    nums = set()
++    for e in (res.get("evidence") or []) + (res.get("extra") or []):
++        if "ayahs" in e:                      # root evidence: a list of its ayahs
++            nums.update(a["ayah"] for a in e["ayahs"])
++        else:                                 # a candidate ayah
++            nums.add(e["ayah"])
++    return sorted(nums)
++
++
+ def _semantic(q, retriever=None, threshold=None, use_llm=False):
+     """
+     No root named: find ayahs by meaning. Refuse if even the best match is too weak.
+@@ -208,7 +219,7 @@ def _with_llm(res, question, use_llm, config=None, transport=None):
+     if data["refuse"]:
+         return {**_refuse(REFUSAL_UNSUPPORTED, res["intent"], res.get("roots", ())),
+                 "generated_by": "llm", "attempts": attempt, "llm_reason": data.get("reason"),
+-                "llm_stats": stats}
++                "llm_stats": stats, "retrieved": _shown_ayahs(res)}
+     return {**res, "answer": data["answer"].strip() + "\n\nEvidence:\n" + template,
+             "citations": verify.cited_ayahs(data), "generated_by": "llm", "attempts": attempt,
+             "claims": data.get("claims") or [], "llm_stats": stats}
+diff --git a/rag/verify.py b/rag/verify.py
+index bc945a0..3cc3e72 100644
+--- a/rag/verify.py
++++ b/rag/verify.py
+@@ -40,6 +40,30 @@ def _norm(s):
+     return re.sub(r"\s+", " ", re.sub(r"[.,;:!?]+$", "", s.strip().lower()))
+ 
+ 
++_QCH = "\"'\u2018\u2019\u201c\u201d\\"
++
++
++def _qnorm(s):
++    """_norm that also ignores quote marks (and JSON backslashes): a translation that itself contains
++    "quotes" is often re-quoted by the model with single quotes."""
++    return _norm(re.sub("[" + re.escape(_QCH) + "]", "", s or ""))
++
++
++def _drop_evidence_quotes(answer, texts):
++    """
++    Blank out every full evidence translation in the answer (with whatever quote marks surround it), so
++    that nested quotes inside a translation cannot pair up wrongly with the quotes around it.
++    Short glosses are left alone: only full translations (25+ characters) are removed.
++    """
++    q = "[" + re.escape(_QCH) + "]*"
++    for t in texts:
++        if len(t) < 25:
++            continue
++        pat = q.join(re.escape(part) for part in re.split("[" + re.escape(_QCH) + "]+", t.strip()) if part)
++        answer = re.sub(q + pat + q, " ", answer, flags=re.I)
++    return answer
++
++
+ def _gloss_norm(s):
+     """Compare glosses ignoring case, wrapping quotes and the dataset's (the) parentheses."""
+     s = re.sub(r'["\u201c\u201d()]', "", s or "")
+@@ -246,10 +270,10 @@ def check(raw, intent, evidence, question=None, extra=None):
+         if gloss and not any(_gloss_norm(gloss) == _gloss_norm(h.get("gloss") or "") for h in hits):
+             errors.append(f'claim {i}: no word of root {root} in ayah {n} has the meaning "{gloss}"')
+ 
+-    texts = _norm(" | ".join(idx["texts"]))
+-    asked = _norm(question or "")
+-    for m in QUOTED.finditer(answer):
+-        phrase = _norm(m.group(1) or m.group(2))
++    texts = _qnorm(" | ".join(idx["texts"]))
++    asked = _qnorm(question or "")
++    for m in QUOTED.finditer(_drop_evidence_quotes(answer, idx["texts"])):
++        phrase = _qnorm(m.group(1) or m.group(2))
+         # allowed: a meaning/translation, an Arabic word or lemma from the evidence, or the learner's own words
+         if phrase and phrase not in texts and not (asked and phrase in asked) \
+                 and strip_arabic(phrase) not in idx["arabic"]:
+diff --git a/scripts/compare_retrievers.py b/scripts/compare_retrievers.py
+new file mode 100644
+index 0000000..3ddac5b
+--- /dev/null
++++ b/scripts/compare_retrievers.py
+@@ -0,0 +1,125 @@
++"""
++Which retrieval variant finds the right ayah for a meaning question? Offline, no LLM, no API key.
++
++    python scripts/compare_retrievers.py            # summary
++    python scripts/compare_retrievers.py -v         # also every question a variant misses at top 3
++
++Variants (all MiniLM unless noted):
++  translation   the ayah translation only. This is what Wasl uses today.
++  +glosses      translation + the word-by-word meanings of that ayah ("an inhaling", "boils up", ...).
++  rrf           translation ranking fused with the TF-IDF ranking (reciprocal rank fusion).
++  +glosses rrf  both of the above.
++
++It reports hit@1 / hit@3 / hit@5 / MRR on the answerable meaning questions in eval/questions.jsonl, and a
++safety check: how many must-refuse questions (no_match) would still be answered at the current thresholds.
++Those 45 questions were used to tune Wasl, so these numbers are development numbers, not a fresh test.
++"""
++import argparse
++import json
++import sys
++from pathlib import Path
++
++import numpy as np
++
++ROOT = Path(__file__).resolve().parent.parent
++sys.path.insert(0, str(ROOT))
++
++from backend import queries  # noqa: E402
++from rag import retrieve  # noqa: E402
++
++HIGH, LOW = retrieve.THRESHOLDS["minilm"], retrieve.THRESHOLDS_LOW["minilm"]
++
++
++def load_questions():
++    rows = [json.loads(l) for l in (ROOT / "eval" / "questions.jsonl").read_text(encoding="utf-8").splitlines()
++            if l.strip()]
++    return ([q for q in rows if q["type"] == "semantic" and q["expect"].get("relevant")],
++            [q for q in rows if q["type"] == "no_match"])
++
++
++def glosses_by_ayah():
++    out = {}
++    for r in queries._rows("SELECT ayah, gloss FROM words WHERE gloss IS NOT NULL ORDER BY ayah, pos"):
++        out.setdefault(r["ayah"], []).append(r["gloss"])
++    return {a: " ".join(g) for a, g in out.items()}
++
++
++def rrf(rankings, k=60):
++    score = {}
++    for ranking in rankings:
++        for pos, ayah in enumerate(ranking):
++            score[ayah] = score.get(ayah, 0.0) + 1.0 / (k + pos + 1)
++    return sorted(score, key=score.get, reverse=True)
++
++
++def main():
++    ap = argparse.ArgumentParser()
++    ap.add_argument("-v", "--verbose", action="store_true")
++    a = ap.parse_args()
++
++    from sentence_transformers import SentenceTransformer
++    ayahs = queries.get_ayahs()
++    ids = [x["ayah"] for x in ayahs]
++    gl = glosses_by_ayah()
++    model = SentenceTransformer(retrieve.MiniLMRetriever.MODEL, device="cpu")
++    emb_t = model.encode([x["translation"] for x in ayahs], normalize_embeddings=True)
++    emb_g = model.encode([x["translation"] + " " + gl.get(x["ayah"], "") for x in ayahs], normalize_embeddings=True)
++    tfidf = retrieve.TfidfRetriever()
++
++    def cos(emb, q):
++        return emb @ model.encode([q], normalize_embeddings=True)[0]
++
++    def rank_from_scores(s):
++        return [ids[i] for i in np.argsort(-s)]
++
++    def variant(name, q):
++        """-> (ranking best-first, best cosine score used for the thresholds)"""
++        st, sg = cos(emb_t, q), cos(emb_g, q)
++        t_rank = [n for n, _ in tfidf.search(q, len(ids))]
++        if name == "translation":
++            return rank_from_scores(st), float(st.max())
++        if name == "+glosses":
++            return rank_from_scores(sg), float(sg.max())
++        if name == "rrf":
++            return rrf([rank_from_scores(st), t_rank]), float(st.max())
++        return rrf([rank_from_scores(sg), t_rank]), float(sg.max())
++
++    names = ["translation", "+glosses", "rrf", "+glosses rrf"]
++    answerable, refuse = load_questions()
++    print(f"{len(answerable)} answerable meaning questions, {len(refuse)} must-refuse (no_match) questions\n")
++    print(f"{'variant':<14}| hit@1  hit@3  hit@5   MRR  | must-refuse answered (>= {HIGH}) / borderline (>= {LOW})"
++          f" | answerable lost (< {LOW})")
++    print("-" * 112)
++    for name in names:
++        h1 = h3 = h5 = 0
++        rr = 0.0
++        missed, lost = [], 0
++        for q in answerable:
++            rel = set(q["expect"]["relevant"])
++            ranking, best = variant(name, q["question"])
++            pos = next((i for i, n in enumerate(ranking, 1) if n in rel), None)
++            h1 += pos == 1
++            h3 += bool(pos and pos <= 3)
++            h5 += bool(pos and pos <= 5)
++            rr += 1 / pos if pos else 0
++            lost += best < LOW
++            if not (pos and pos <= 3):
++                missed.append((q["id"], pos, q["question"]))
++        hi = lo = 0
++        for q in refuse:
++            _, best = variant(name, q["question"])
++            hi += best >= HIGH
++            lo += best >= LOW
++        n = len(answerable)
++        print(f"{name:<14}| {h1:>2}/{n}  {h3:>2}/{n}  {h5:>2}/{n}  {rr / n:.2f}  | "
++              f"{hi:>2}/{len(refuse)} / {lo:>2}/{len(refuse)}"
++              f"{'':<27}| {lost}/{n}")
++        if a.verbose:
++            for qid, pos, text in missed:
++                print(f"    miss@3 {qid} (right ayah at rank {pos}): {text}")
++    print("\nThe cosine thresholds were tuned for the 'translation' variant; a variant that changes the score "
++          "scale (+glosses) may need its own thresholds, so read the two safety columns before choosing.")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/tests/test_metrics.py b/tests/test_metrics.py
+index c1a961b..3654f84 100644
+--- a/tests/test_metrics.py
++++ b/tests/test_metrics.py
+@@ -49,6 +49,17 @@ def test_classify_failure_causes():
+     assert c(_q("concept", roots_include=["رحم"]), {"refused": False, "cited": [3, 19, 5]}, [3, 19]) is None
+ 
+ 
++def test_an_llm_refusal_is_a_retrieval_miss_when_the_right_ayah_was_never_shown():
++    c = metrics.classify_failure
++    q = _q("semantic", relevant=[7, 8])
++    miss = c(q, {"refused": True, "generated_by": "llm", "retrieved": [6, 15, 5]}, [7, 8])
++    assert "retrieval missed" in miss
++    # the right ayah was shown and the model still refused: a real over-refusal
++    assert "LLM refused" in c(q, {"refused": True, "generated_by": "llm", "retrieved": [6, 7]}, [7, 8])
++    # records written before this field existed keep the old label
++    assert "LLM refused" in c(q, {"refused": True, "generated_by": "llm"}, [7, 8])
++
++
+ def test_group_failures_orders_by_size():
+     g = metrics.group_failures([("a", 1, "x"), ("b", 2, "y"), ("b", 3, "z")])
+     assert list(g) == ["b", "a"] and g["b"] == [(2, "y"), (3, "z")]
+diff --git a/tests/test_threezone.py b/tests/test_threezone.py
+index 08be00c..c19850c 100644
+--- a/tests/test_threezone.py
++++ b/tests/test_threezone.py
+@@ -97,3 +97,10 @@ def test_a_root_question_does_not_get_search_ayahs(monkeypatch, tmp_path):
+     pipeline.answer("What does the root khalaq mean?", retriever=Stub([(3, 0.5)]), use_llm=True,
+                     llm_config=CFG, llm_transport=cap)
+     assert "ALSO CLOSE IN MEANING TO THE QUESTION" not in cap.bodies[0]
++
++
++def test_an_llm_refusal_records_which_ayahs_the_model_was_shown(monkeypatch, tmp_path):
++    _no_cache(monkeypatch, tmp_path)
++    r = pipeline.answer("poem", retriever=Stub([(5, BORDER), (6, BORDER - 0.01)]), use_llm=True, llm_config=CFG,
++                        llm_transport=_reply(refuse=True, answer="", claims=[], reason="unrelated"))
++    assert r["refused"] and r["retrieved"] == [5, 6]
+diff --git a/tests/test_verifier_quotes.py b/tests/test_verifier_quotes.py
+new file mode 100644
+index 0000000..cc83b53
+--- /dev/null
++++ b/tests/test_verifier_quotes.py
+@@ -0,0 +1,35 @@
++"""i07: a correct answer was rejected because the translation it quoted contains quote marks itself."""
++import json
++
++from rag import verify
++from rag.evidence import ayah_evidence
++
++EV = ayah_evidence([(23, 0.5)])
++T23 = EV[0]["translation"]            # Say, "It is He who has produced you ... little are you grateful."
++
++
++def _check(answer):
++    raw = json.dumps({"refuse": False, "answer": answer, "claims": []}, ensure_ascii=False)
++    return verify.check(raw, "semantic", EV)[1]
++
++
++def test_translation_requoted_with_single_inner_quotes_passes():
++    assert 'Say, "' in T23
++    assert _check("Ayah [67:23] states, \"" + T23.replace('"', "'") + "\"") == []
++
++
++def test_translation_with_its_own_double_quotes_inside_double_quotes_passes():
++    assert _check("Ayah [67:23] states, \"" + T23 + "\" In this verse Allah mentions what he gave people.") == []
++
++
++def test_unquoted_translation_passes():
++    assert _check("Ayah [67:23] says " + T23) == []
++
++
++def test_a_fabricated_quote_is_still_rejected_next_to_a_real_one():
++    errs = _check("Ayah [67:23] states, \"" + T23 + "\" It also says \"Allah rewards the grateful with gold\".")
++    assert any("gold" in e for e in errs)
++
++
++def test_a_fabricated_quote_alone_is_still_rejected():
++    assert _check('Ayah [67:23] says "Allah rewards the grateful with gold".')
