@@ -1,76 +1,130 @@
-# Wasl - Quran Root Explorer (Surah Al-Mulk)
+# Wasl: Quran Root Explorer (Surah Al-Mulk)
 
-**Wasl** is a root-based reader and AI-assisted study tool for **Surah Al-Mulk** (Qur'an 67)[cite: 52]. Hover over any word to see its root, plain-English grammar, and meaning, or click a rooted word to open its root family tree, verse occurrences, recitation with word highlighting, tafsir, personal notes, and the verified learning assistant[cite: 52].
+Wasl ("connection") is a web app that teaches the vocabulary of **Surah Al-Mulk** (Qur'an 67: 30 ayahs, 333 words) through Arabic roots. Hover over any word to see its root, meaning and grammar in plain English, follow the root to every related word and ayah, listen to four reciters, read the tafsir, keep notes, ask a learning assistant, and practise with quizzes that adapt to your mistakes.
+
+**Design rule:** every fact comes from a verified database. Generative AI (Gemini) only writes explanations, and a deterministic verifier checks every AI text against the database before it is shown. If the check fails, you see the database text instead.
+
+| | |
+| --- | --- |
+| **Live app** | _to be added after deployment_ |
+| **API docs** | `/docs` on the backend (Swagger UI), `/openapi.json` |
+| **Repository** | https://github.com/ImamaSarwar/Wasl |
+| **Team** | Huzaifa Muhammad (23i-0608), Imama Sarwar (23i-3048) |
+
+---
+
+## Current status (28 November 2026)
+
+| Area | Status |
+| --- | --- |
+| Reader, hover card, root tree, recitation, tafsir, notes (F1 to F6) | Built and tested |
+| Learning assistant with Gemini and verifier (F7 to F10) | Built and evaluated |
+| Root Tutor (F11) | Built; Gemini run not yet scored |
+| Quiz with AI feedback and adaptive question selection (F14) | Built and evaluated |
+| Progress dashboard (F15) | Built and tested |
+| Goal-based lessons (F12) | Not built |
+| Root comparison view (F13) | Partly built (comparison questions in the assistant) |
+| Data cross-check (F16) | Partly built (two-source morphology diff; API sync not built) |
+| Automated tests | 223 backend + 28 frontend, all passing |
+| Docker, CI, public deployment, AI call logging | **Not built yet** (see "Docker" below) |
+
+---
+
+## How it works
 
 ```text
-Browser (React, :5173)  --/api-->  FastAPI (:8000)  -->  SQLite (data/quran.db)
+Browser (React + Vite, :5173)
+   |  /api (JSON)                       audio streamed from the reciters' CDNs
+FastAPI backend (:8000)
+   |-- deterministic core: SQL queries, plain-English grammar, quiz generator
+   |-- assistant package (rag/): scope gates -> resolver -> retrieval -> evidence by SQL
+   |                              -> Gemini drafts JSON -> verifier -> (retry once) -> database fallback
+SQLite database (data/quran.db), read-only, built from data/raw by scripts/build_db.py
 ```
+
+**Where AI is used**
+
+| Feature | AI | What stops it from being wrong |
+| --- | --- | --- |
+| Learning assistant (`POST /api/ask`) | Gemini writes the answer; all-MiniLM-L6-v2 finds ayahs for questions that name no root | Scope gates, evidence by SQL, verifier on every claim, database answer as fallback |
+| Root Tutor (`GET /api/roots/{root}/lesson`) | Gemini explains how a root forms its words | Grammar terms must be recorded facts; quotes must match; database lesson as fallback |
+| Quiz feedback (`POST /api/quiz/feedback`) | Gemini explains a wrong answer | Server re-grades; each sentence checked against the evidence for its own option; template fallback |
+| Everything else (text, roots, grammar, quiz questions and keys, adaptive selection, dashboard) | None | Deterministic code over the database or the browser's stored answers |
+
+Notes and quiz progress are stored only in your browser and are never sent to the server.
 
 ---
 
 ## 1. Prerequisites
 
-Make sure you have the following installed before running the project:
-
-* **Git**
-* **Python 3.10+** (or `py` on Windows)
-* **Node.js 18+** (includes `npm`)
-
-Check your versions in the terminal:
+- **Git**
+- **Python 3.10+** (`py` on Windows)
+- **Node.js 18+** (includes `npm`)
+- A **Gemini API key** from Google AI Studio (optional: without it every AI feature returns database text)
 
 ```bash
 git --version
-python --version        # On Windows PowerShell, you can also run: py --version
+python --version      # Windows: py --version
 node --version
 npm --version
 ```
 
 ---
 
-## 2. Installation
+## 2. Setup
 
-### 2.1 Clone the repository
+### 2.1 Clone
 
 ```bash
 git clone https://github.com/ImamaSarwar/Wasl.git
 cd Wasl
 ```
 
-### 2.2 Set up the Python backend
-
-**macOS / Linux**
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+### 2.2 Python environment
 
 **Windows (PowerShell)**
 
 ```powershell
 py -m venv .venv
 .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -r requirements-rag.txt
 ```
 
-> If PowerShell blocks activation scripts, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` and try activating `.venv` again.
+If PowerShell blocks the activation script, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, then activate again.
 
-If you plan to run the AI assistant features locally, copy `.env.example` to `.env` and add your `GEMINI_API_KEY`:
+**macOS / Linux**
 
 ```bash
-cp .env.example .env
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-rag.txt
 ```
 
-### 2.3 Build the SQLite database
+`requirements-rag.txt` includes `requirements.txt` and adds the retrievers (sentence-transformers pulls in PyTorch, a large download). `requirements.txt` alone runs the reader without meaning search.
 
-With `.venv` active, build `data/quran.db` from the raw source files[cite: 52]:
+### 2.3 Configuration
+
+Copy the example file and fill it in. **Never commit `.env`** (it is git-ignored).
+
+```bash
+cp .env.example .env          # Windows PowerShell: Copy-Item .env.example .env
+```
+
+| Variable | Example | Meaning |
+| --- | --- | --- |
+| `LLM_PROVIDER` | `gemini` | `gemini` (default) or `openai_compatible` |
+| `LLM_API_KEY` | _your key_ | Gemini API key; leave empty to run without AI text |
+| `LLM_MODEL` | `gemini-3.5-flash-lite` | The model used in our evaluation |
+| `WASL_RETRIEVER` | `minilm` | Meaning-search retriever. **Set this**: the code default is `tfidf`, and all reported results used `minilm` |
+| `LLM_BASE_URL` | | Only for `openai_compatible` providers |
+
+### 2.4 Build the database
 
 ```bash
 python scripts/build_db.py
 ```
 
-Expected output:
+Expected output ends with:
 
 ```text
 Built data/quran.db
@@ -80,7 +134,7 @@ Built data/quran.db
   distinct roots: 128
 ```
 
-### 2.4 Install frontend dependencies
+### 2.5 Frontend packages
 
 ```bash
 cd frontend
@@ -90,110 +144,124 @@ cd ..
 
 ---
 
-## 3. Running the App
+## 3. Run
 
-Run the backend and frontend in two separate terminals so both stay active.
+Use two terminals.
 
-### Terminal 1 — Start the FastAPI backend
-
-From the project root with `.venv` active:
+**Terminal 1: backend** (repository root, virtual environment active)
 
 ```bash
 uvicorn backend.main:app --reload
 ```
 
-* API docs: `[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)`
-* Health check: `[http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)`
+Check http://127.0.0.1:8000/api/health returns `{"ok": true, "roots": 128}`. API docs: http://127.0.0.1:8000/docs
 
-### Terminal 2 — Start the React frontend
+**Terminal 2: frontend**
 
 ```bash
 cd frontend
 npm run dev
 ```
 
-Open **`http://localhost:5173`** in your browser.
+Open http://localhost:5173
 
 ---
 
-## 4. Features Currently Developed
+## 4. Docker
 
-* **Surah Reader:** Read all 30 ayahs of Surah Al-Mulk with Arabic text, English translation, and transliteration[cite: 52].
-* **Hover Word Cards:** Hover over any word to see its meaning, root letters, plain-English grammar, and attested past/present forms (particles show `"No root"`)[cite: 52].
-* **Root Family Tree & Drill-Down:** Click a rooted word to inspect its family tree (root, lemma, morphological form, occurrence), verse chart, co-occurring roots, and highlighted ayahs[cite: 52].
-* **Recitation with Word Highlighting:** Pick a reciter from the top of the surah card to play an ayah or the whole surah with word highlighting (requires internet to stream audio)[cite: 52].
-* **Tafsir Panel:** Open English Tafsir Ibn Kathir commentary grouped by ayah ranges per ayah[cite: 52].
-* **Personal Notes:** Save per-ayah notes in browser `localStorage` (marked with a blue dot) and download them as a `.txt` file[cite: 52].
-* **Learning Assistant:** Ask grounded questions about roots, word forms, comparisons, or concepts in Surah Al-Mulk[cite: 52].
-
----
-
-## 5. Running Tests
-
-Run backend unit tests from the repository root (with `.venv` active):
+**Not available yet.** The repository does not contain Dockerfiles or a Compose file as of 28 November 2026. The planned command, once they are added, is:
 
 ```bash
-python -m unittest discover -s tests -v
+docker compose up --build
 ```
 
-Run frontend storage tests:
+It will build the backend image (database built at image build time, read-only at run time) and the frontend image, and read secrets from `.env`. The deployment runbook lists the steps.
+
+---
+
+## 5. Tests and evaluation
 
 ```bash
+pip install pytest            # once
+python -m pytest -q           # 223 backend tests
+
 cd frontend
-npm test
+npm test                      # 28 frontend tests
 cd ..
 ```
 
+AI evaluation (results are written to `eval/results/`, which is git-ignored; Gemini replies are cached in `.llm_cache/`):
+
+```bash
+python eval/run_verifier.py                      # assistant verifier on 480 drafts (offline)
+python -m eval.run_baselines                     # assistant vs 4 alternatives (needs .env)
+python -m eval.run_quiz_feedback --faulty        # quiz-feedback verifier on broken drafts (offline)
+python -m eval.run_quiz_feedback                 # Gemini quiz feedback on 60 wrong answers (needs .env)
+python -m eval.run_quiz_feedback --ratings eval/results/quiz_feedback_rating.csv   # after human rating
+```
+
+**Headline results**
+
+| Measure | Result |
+| --- | --- |
+| Assistant, root precision / recall (170 questions) | 0.92 / 0.89 (prompt-only Gemini: 0.70 / 0.56) |
+| Assistant, out-of-scope questions refused | 58 / 58 |
+| Assistant, false refusals | 12 / 112 (11%) |
+| Verifier, faulty drafts rejected | 357 / 357 (assistant), 525 / 525 (quiz feedback); no good draft rejected |
+| Quiz feedback, verified Gemini explanation shown | 60 / 60 (56 first try, 4 after one retry) |
+| Latency, median / p95 | Quiz feedback 1.1 s / 1.9 s; assistant 1.22 s / 9.70 s |
+| Cost per assistant call | about USD 0.00058 at paid-tier Gemini prices |
+
+Full numbers, error analysis and what is still missing are in the Product Evaluation Report.
+
 ---
 
-## 6. Project Structure
+## 6. Project structure
 
 ```text
-Wasl/
-├── README.md
-├── requirements.txt            # Backend Python dependencies
-├── .env.example                # Environment template (copy to .env)
-├── data/
-│   ├── raw/                    # Original source files (do not edit)
-│   ├── corrections.csv         # Reviewed manual fixes
-│   ├── CREDITS.md              # Dataset attributions and licenses
-│   └── quran.db                # Generated SQLite database (git-ignored)
-├── scripts/
-│   ├── build_db.py             # Builds data/quran.db from raw sources
-│   └── diff_sources.py         # Compares corpus root entries
-├── backend/
-│   ├── main.py                 # FastAPI endpoints
-│   ├── queries.py              # SQL query functions
-│   └── grammar.py              # Plain-English grammar labels
-├── rag/                        # Routing, retrieval, Gemini client, verifier
-├── eval/                       # Evaluation sets and scripts
-├── tests/                      # Backend unit tests
-└── frontend/
-    ├── package.json
-    ├── vite.config.js
-    └── src/
-        ├── main.jsx
-        ├── App.jsx
-        ├── api.js
-        ├── styles.css
-        └── components/
+backend/        FastAPI app (main.py), SQL queries, plain-English grammar, quiz generator
+rag/            Assistant package: gates, resolver, retrievers, evidence, Gemini client,
+                generators (assistant, Root Tutor, quiz feedback) and verifiers
+frontend/       React app (Vite, d3): reader, root tree, assistant, quiz, dashboard
+scripts/        build_db.py and data import, diff and debugging tools
+data/           raw sources, corrections.csv, CREDITS.md (quran.db is generated)
+eval/           test sets, baselines, verifier fault sets, quiz-feedback evaluation
+tests/          backend unit tests
+docs/           project documentation
 ```
 
 ---
 
-## 7. Troubleshooting
+## 7. Documentation
 
-| Issue | Fix |
-|---|---|
-| `ModuleNotFoundError: No module named 'fastapi'` | Activate `.venv` first, then run `pip install -r requirements.txt` |
-| `uvicorn: command not found` | Run `python -m uvicorn backend.main:app --reload` inside `.venv` |
-| `no such table` or missing database | Run `python scripts/build_db.py` from the repo root |
-| Frontend says `"Cannot reach the backend"` | Make sure Terminal 1 is running on port `8000` and `/api/health` responds |
-| Port `8000` or `5173` already in use | Stop the other process or pass `--port 8001` to `uvicorn` |
-| `npm install` fails | Check `node -v` is `18+`, delete `frontend/node_modules`, and run `npm install` again |
+| Document | Contents |
+| --- | --- |
+| Product Requirements Document | Users, features F1 to F16 with acceptance criteria and status, non-functional requirements |
+| Architecture Document | Architecture diagram, components, data model, AI vs deterministic parts |
+| AI Card | Models and versions, purpose, data, results, limitations, risks and safeguards per AI component |
+| API Documentation | All 16 endpoints with parameters and examples (live schema at `/docs`) |
+| User Guide and Deployment Runbook | How to use the app; configuration, local run, deployment plan, operations |
+| Product Evaluation Report | Functional tests, AI evaluation, robustness and safety, performance and cost |
+| AI Tool Declaration | AI tools used to build the product and write the documents |
+| System demonstration paper | IEEE conference format, 4 to 6 pages |
 
 ---
 
-## 8. Credits & Data Sources
+## 8. Troubleshooting
 
-Dataset sources, attributions, and licensing notes are listed in `data/CREDITS.md` and in the application footer[cite: 52].
+| Problem | Fix |
+| --- | --- |
+| `vite` is not recognised | Run `npm install` in `frontend` |
+| Frontend shows network errors | Start the backend first; check http://127.0.0.1:8000/api/health |
+| Every AI answer is database text | Check `LLM_API_KEY` and `LLM_MODEL` in `.env`; run `python scripts/check_llm.py`; the response's `llm_error` says why |
+| Meaning questions are refused | Install `requirements-rag.txt` and set `WASL_RETRIEVER=minilm` |
+| No audio | Recitation needs internet; try another reciter |
+| Notes or progress disappeared | They live in this browser only; clearing browser data deletes them. Export notes regularly |
+
+---
+
+## 9. Data, credits and disclaimer
+
+Qur'anic text: Tanzil. Roots, lemmas and grammar: Quranic Arabic Corpus v0.4. Word-by-word meanings, transliteration and translation: QUL exports. Tafsir: Tafsir Ibn Kathir (English). Recitations are streamed from the providers' CDNs, not redistributed. Full sources and licences: `data/CREDITS.md`.
+
+Wasl is a learning aid for vocabulary, not a religious authority. It does not interpret the Qur'an or give rulings; for those, please ask a qualified scholar.

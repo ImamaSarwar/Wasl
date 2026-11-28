@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from . import queries, quiz
 from rag.pipeline import answer as rag_answer
+from rag.quiz_feedback import feedback as quiz_feedback
 from rag.tutor import lesson as root_lesson
 
 app = FastAPI(title="Wasl - Quran Root Explorer (Surah Al-Mulk)")
@@ -104,11 +105,29 @@ def tafsir(source_id: str, ayah: int):
 
 
 @app.get("/api/quiz")
-def quiz_questions(level: str = "easy", seed: int | None = None):
-    """Multiple-choice quiz built from the database. level: easy | intermediate | hard."""
+def quiz_questions(level: str = "easy", seed: int | None = None, focus: str | None = None,
+                   weak: str | None = None):
+    """Multiple-choice quiz built from the database. level: easy | intermediate | hard.
+    Adaptive selection (rule-based): focus = comma-separated roots to revise, weak = weakest skill."""
     if level not in quiz.LEVELS:
         raise HTTPException(404, f"unknown level '{level}'")
-    return quiz.build_quiz(level, seed)
+    if weak is not None and weak not in quiz.SKILLS:
+        raise HTTPException(400, f"unknown skill '{weak}'")
+    return quiz.build_quiz(level, seed, focus=(focus or "").split(",") if focus else None, weak=weak)
+
+
+class FeedbackRequest(BaseModel):
+    question: dict
+    chosen: str
+
+
+@app.post("/api/quiz/feedback")
+def quiz_answer_feedback(req: FeedbackRequest):
+    """Wrong answer -> Gemini explains chosen vs correct from database evidence; verified; template fallback."""
+    try:
+        return quiz_feedback(req.question, req.chosen, use_llm=True)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 class AskRequest(BaseModel):

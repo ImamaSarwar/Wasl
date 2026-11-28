@@ -37,6 +37,14 @@ export const api = {
   recitations: (reciterId) => request("GET", `/api/recitations/${enc(reciterId)}`),
   tafsirSources: () => request("GET", "/api/tafsir"),
   tafsir: (sourceId, ayah) => request("GET", `/api/tafsir/${enc(sourceId)}/${ayah}`),
-  quiz: (level) => request("GET", `/api/quiz?level=${enc(level)}`),
+  // focus = { roots: [...], weak: "tense" | null } from progress.quizFocus (adaptive question selection)
+  quiz: (level, focus) => {
+    const params = new URLSearchParams({ level });
+    if (focus?.roots?.length) params.set("focus", focus.roots.join(","));
+    if (focus?.weak) params.set("weak", focus.weak);
+    return request("GET", `/api/quiz?${params}`);
+  },
+  // Wrong answer -> explanation written by Gemini from database evidence, checked before it is shown
+  quizFeedback: (question, chosen) => request("POST", "/api/quiz/feedback", { question, chosen }),
   ask: (question) => request("POST", "/api/ask", { question }),
 };

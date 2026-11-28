@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { confusedPairs, revisionList, rootProgress, skillScores, weakestSkill } from "./progress.js";
+import {
+  FOCUS_ROOTS, confusedPairs, quizFocus, revisionList, rootProgress, skillScores, weakestSkill,
+} from "./progress.js";
 
 const at = (day) => `2026-11-${String(day).padStart(2, "0")}T10:00:00.000Z`;
 const a = (root, correct, day = 20, extra = {}) =>
@@ -58,4 +60,23 @@ test("confused pairs count both directions together and skip verse questions", (
 
 test("no answers gives empty results", () => {
   assert.deepEqual([rootProgress([]), revisionList([]), skillScores([]), confusedPairs([])], [[], [], [], []]);
+});
+
+test("quiz focus: revision roots first, plus the weakest skill", () => {
+  const list = [
+    a("twice", false, 2), a("twice", false, 26), a("once", false, 25), a("old", true, 1), a("fresh", true, 26),
+    a("w", false, 26, { type: "morphology", kind: "tense" }),
+    a("w", false, 26, { type: "morphology", kind: "tense" }),
+    a("w", true, 26, { type: "morphology", kind: "tense" }),
+  ];
+  assert.deepEqual(quizFocus(list, new Date(at(27))), { roots: ["twice", "once", "old"], weak: "tense" });
+});
+
+test("quiz focus: nothing saved gives an ordinary quiz", () => {
+  assert.deepEqual(quizFocus([]), { roots: [], weak: null });
+});
+
+test("quiz focus: at most FOCUS_ROOTS roots", () => {
+  const list = Array.from({ length: 20 }, (_, i) => a(`r${i}`, false, 26));
+  assert.equal(quizFocus(list, new Date(at(27))).roots.length, FOCUS_ROOTS);
 });
